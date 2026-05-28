@@ -64,3 +64,9 @@ Click the **Settings** button in the app header to:
 2.  Choose your preferred LLM (default is `google/gemini-2.5-flash`).
 
 *Your API key is stored securely in a local settings JSON file on your machine and never leaves your device except via secure Rust HTTPS requests to OpenRouter.*
+
+---
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](file:///d:/workspace/my/ziwei/LICENSE) file for details.
