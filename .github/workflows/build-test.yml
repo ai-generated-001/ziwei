@@ -56,3 +56,36 @@ jobs:
         run: |
           cd ziwei/src-tauri
           cargo check
+
+      - name: Build frontend artifacts
+        run: |
+          cd ziwei
+          pnpm build
+        
+      - name: Upload frontend build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-build-${{ matrix.os }}
+          path: ziwei/dist/
+          retention-days: 30
+
+      - name: Build Rust artifacts
+        run: |
+          cd ziwei/src-tauri
+          cargo build --release
+
+      - name: Upload Rust build artifacts (Ubuntu)
+        if: matrix.os == 'ubuntu-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: rust-build-linux
+          path: ziwei/src-tauri/target/release/
+          retention-days: 30
+
+      - name: Upload Rust build artifacts (Windows)
+        if: matrix.os == 'windows-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: rust-build-windows
+          path: ziwei/src-tauri/target/release/
+          retention-days: 30
