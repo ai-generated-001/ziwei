@@ -52,6 +52,11 @@ jobs:
       - name: Setup Rust toolchain
         uses: dtolnay/rust-toolchain@stable
 
+      - name: Add Android target (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          rustup target add aarch64-linux-android
+
       - name: Cargo check (Rust backend)
         run: |
           cd ziwei/src-tauri
