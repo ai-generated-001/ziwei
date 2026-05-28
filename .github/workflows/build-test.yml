@@ -76,7 +76,8 @@ jobs:
       - name: Build Tauri app (Linux - APK)
         if: matrix.os == 'ubuntu-latest'
         env:
-          OPENSSL_DIR: /usr/lib/ssl
+          AARCH64_LINUX_ANDROID_OPENSSL_LIB_DIR: /usr/lib/x86_64-linux-gnu
+          AARCH64_LINUX_ANDROID_OPENSSL_INCLUDE_DIR: /usr/include
           OPENSSL_STATIC: 1
           PKG_CONFIG_PATH: /usr/lib/x86_64-linux-gnu/pkgconfig
         run: |
