@@ -40,7 +40,9 @@ jobs:
             patchelf
 
       - name: Install node dependencies
-        run: pnpm install --no-frozen-lockfile
+        run: |
+          cd ziwei
+          pnpm install --no-frozen-lockfile
 
       - name: Frontend build check
         run: |
