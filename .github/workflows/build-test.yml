@@ -57,35 +57,30 @@ jobs:
           cd ziwei/src-tauri
           cargo check
 
-      - name: Build frontend artifacts
+      - name: Build Tauri app (Linux - APK)
+        if: matrix.os == 'ubuntu-latest'
         run: |
           cd ziwei
-          pnpm build
-        
-      - name: Upload frontend build artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: frontend-build-${{ matrix.os }}
-          path: ziwei/dist/
-          retention-days: 30
+          pnpm tauri build -- --target aarch64-linux-android
 
-      - name: Build Rust artifacts
+      - name: Build Tauri app (Windows - EXE)
+        if: matrix.os == 'windows-latest'
         run: |
-          cd ziwei/src-tauri
-          cargo build --release
+          cd ziwei
+          pnpm tauri build
 
-      - name: Upload Rust build artifacts (Ubuntu)
+      - name: Upload APK artifact (Linux)
         if: matrix.os == 'ubuntu-latest'
         uses: actions/upload-artifact@v4
         with:
-          name: rust-build-linux
-          path: ziwei/src-tauri/target/release/
+          name: app-apk
+          path: ziwei/src-tauri/target/aarch64-linux-android/release/*.apk
           retention-days: 30
 
-      - name: Upload Rust build artifacts (Windows)
+      - name: Upload EXE artifact (Windows)
         if: matrix.os == 'windows-latest'
         uses: actions/upload-artifact@v4
         with:
-          name: rust-build-windows
-          path: ziwei/src-tauri/target/release/
+          name: app-exe
+          path: ziwei/src-tauri/target/release/*.exe
           retention-days: 30
