@@ -1,0 +1,20 @@
+# Dependency directories
+node_modules/
+**/node_modules/
+
+# Build outputs
+**/dist/
+**/target/
+
+# Local configuration/secrets / databases
+**/.env
+**/.env.*.local
+**/settings.json
+**/ziwei.db
+**/*.db
+**/*.db-journal
+
+# System files
+.DS_Store
+*.log
+.vscode/
