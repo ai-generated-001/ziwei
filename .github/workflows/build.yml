@@ -29,6 +29,12 @@ jobs:
       - name: Setup Rust toolchain
         uses: dtolnay/rust-toolchain@stable
 
+      # 增加 Rust 构建缓存（显著缩短 Windows 编译时间）
+      - name: Setup Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: "ziwei/src-tauri -> target"
+
       - name: Install frontend dependencies
         run: |
           cd ziwei
@@ -76,6 +82,12 @@ jobs:
         with:
           targets: aarch64-linux-android,armv7-linux-androideabi,i686-linux-android,x86_64-linux-android
 
+      # 增加 Rust 构建缓存（显著缩短 Android 编译时间）
+      - name: Setup Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: "ziwei/src-tauri -> target"
+
       - name: Install Android NDK 26.1.10909125
         run: |
           echo "Installing Android NDK 26.1.10909125..."
@@ -99,11 +111,16 @@ jobs:
       - name: Build Android APK
         run: |
           cd ziwei
+          # 仅当 gen/android 不存在时才执行 init，防止覆盖已有配置
+          if [ ! -d "src-tauri/gen/android" ]; then
+            pnpm tauri android init
+          fi
           pnpm tauri android build
 
       - name: Upload Android APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: app-apk
-          path: ziwei/src-tauri/gen/android/app/build/outputs/apk/universal/debug/*.apk
+          # 使用通配符，确保无论 Gradle 打出单架构包还是 Universal 包都能被捕获
+          path: ziwei/src-tauri/gen/android/app/build/outputs/apk/**/*.apk
           retention-days: 30
