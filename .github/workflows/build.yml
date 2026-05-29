@@ -38,7 +38,7 @@ jobs:
       - name: Install frontend dependencies
         run: |
           cd ziwei
-          pnpm install --no-frozen-lockfile
+          pnpm install --no-frozen-lockfile --ignore-workspace
 
       - name: Build Tauri app (Windows)
         run: |
@@ -106,7 +106,7 @@ jobs:
       - name: Install frontend dependencies
         run: |
           cd ziwei
-          pnpm install --no-frozen-lockfile
+          pnpm install --no-frozen-lockfile --ignore-workspace
 
       - name: Build Android APK
         run: |
