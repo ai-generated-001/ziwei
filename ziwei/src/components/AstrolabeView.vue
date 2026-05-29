@@ -3,6 +3,12 @@ import { ref, onMounted, onUnmounted } from 'vue';
 import { store } from '../store/useStore';
 import { Compass, ChevronDown, ChevronUp, Sparkles } from 'lucide-vue-next';
 import { getStarMeaning } from '../utils/starDictionary';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 // Mapping position branches in clockwise circular fashion (standard 4x4 Grid layout)
 const gridPositions = [
@@ -147,6 +153,7 @@ onUnmounted(() => {
 </script>
 
 <template>
+  <TooltipProvider :delay-duration="200">
   <div v-if="store.activeChart" class="space-y-6 relative">
     <!-- 1. Mobile View (Card List) -->
     <div class="block md:hidden space-y-4">
@@ -278,40 +285,49 @@ onUnmounted(() => {
 
         <!-- Major Stars (Destiny Core) -->
         <div class="my-0.5 flex flex-col gap-1">
-          <div 
+          <Tooltip 
             v-for="s in getPalaceByBranch(pos.branch)?.majorStars" 
             :key="s.name"
-            class="group relative text-xs lg:text-[15px] font-bold text-gold flex items-center justify-between cursor-help leading-tight hover:z-9999"
           >
-            <span>{{ s.name }}</span>
-            <div class="flex items-center gap-1">
-              <span v-if="s.brightness" :class="s.brightness === '庙' || s.brightness === '旺' || s.brightness === 'Temple' || s.brightness === 'Prosperous' ? 'text-emerald-400' : s.brightness === '陷' || s.brightness === '平' || s.brightness === 'Trap' || s.brightness === 'Flat' ? 'text-rose-400' : 'text-white/40'" class="text-3xs lg:text-2xs font-normal">({{ s.brightness }})</span>
-              <span v-if="s.mutagen" :class="getMutagenClass(s.mutagen)" class="rounded px-0.5 py-0.2 text-3xs border scale-95 leading-none">
-                {{ s.mutagen }}
-              </span>
-            </div>
-            <!-- Tooltip -->
-            <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block w-40 p-2 bg-space-950/95 backdrop-blur text-white text-[10px] lg:text-xs rounded shadow-xl border border-white/10 z-[9999] font-normal leading-relaxed pointer-events-none text-center">
-              {{ getStarMeaning(s.name) }}
-            </div>
-          </div>
+            <TooltipTrigger as-child>
+              <div class="text-xs lg:text-[15px] font-bold text-gold flex items-center justify-between cursor-help leading-tight">
+                <span>{{ s.name }}</span>
+                <div class="flex items-center gap-1">
+                  <span v-if="s.brightness" :class="s.brightness === '庙' || s.brightness === '旺' || s.brightness === 'Temple' || s.brightness === 'Prosperous' ? 'text-emerald-400' : s.brightness === '陷' || s.brightness === '平' || s.brightness === 'Trap' || s.brightness === 'Flat' ? 'text-rose-400' : 'text-white/40'" class="text-3xs lg:text-2xs font-normal">({{ s.brightness }})</span>
+                  <span v-if="s.mutagen" :class="getMutagenClass(s.mutagen)" class="rounded px-0.5 py-0.2 text-3xs border scale-95 leading-none">
+                    {{ s.mutagen }}
+                  </span>
+                </div>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent side="top" :side-offset="4" class="z-[100] max-w-[200px] bg-zinc-900 border-zinc-800 text-white shadow-xl">
+              <p class="text-xs whitespace-normal leading-relaxed text-center">
+                {{ getStarMeaning(s.name) }}
+              </p>
+            </TooltipContent>
+          </Tooltip>
         </div>
 
         <!-- Secondary (Lucky/Unlucky) & Tertiary Stars -->
         <div class="flex flex-wrap gap-1 mt-0.5 mb-1">
-          <span 
+          <Tooltip 
             v-for="s in [...(getPalaceByBranch(pos.branch)?.minorStars || []), ...(getPalaceByBranch(pos.branch)?.adjectiveStars || [])]" 
             :key="s.name"
-            :class="isLuckyStar(s.name) ? 'text-emerald-400' : isUnluckyStar(s.name) ? 'text-rose-400' : 'text-gray-500 opacity-80'"
-            class="group relative text-[10px] font-medium tracking-tight flex items-center cursor-help leading-none hover:z-50"
           >
-            {{ s.name }}<span v-if="s.mutagen" class="text-gold scale-75">*</span>
-            
-            <!-- Tooltip -->
-            <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover:block w-36 p-1.5 bg-space-950/95 backdrop-blur text-white text-[10px] rounded shadow-xl border border-white/10 z-[9999] font-normal leading-relaxed pointer-events-none text-center whitespace-normal">
-              {{ getStarMeaning(s.name) }}
-            </div>
-          </span>
+            <TooltipTrigger as-child>
+              <span 
+                :class="isLuckyStar(s.name) ? 'text-emerald-400' : isUnluckyStar(s.name) ? 'text-rose-400' : 'text-gray-500 opacity-80'"
+                class="text-[10px] font-medium tracking-tight flex items-center cursor-help leading-none"
+              >
+                {{ s.name }}<span v-if="s.mutagen" class="text-gold scale-75">*</span>
+              </span>
+            </TooltipTrigger>
+            <TooltipContent side="top" :side-offset="4" class="z-[100] max-w-[200px] bg-zinc-900 border-zinc-800 text-white shadow-xl">
+              <p class="text-xs whitespace-normal leading-relaxed text-center">
+                {{ getStarMeaning(s.name) }}
+              </p>
+            </TooltipContent>
+          </Tooltip>
         </div>
 
         <!-- Footer (Stem, Longevity, Decadal range, Ages) -->
@@ -409,6 +425,7 @@ onUnmounted(() => {
       {{ store.t('placeholderDesc') }}
     </p>
   </div>
+  </TooltipProvider>
 </template>
 
 <style scoped>
