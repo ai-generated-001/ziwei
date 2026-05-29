@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 import { store } from '../store/useStore';
-import { Compass, ChevronDown, ChevronUp } from 'lucide-vue-next';
+import { Compass, ChevronDown, ChevronUp, Sparkles } from 'lucide-vue-next';
+import { getStarMeaning } from '../utils/starDictionary';
 
 // Mapping position branches in clockwise circular fashion (standard 4x4 Grid layout)
 const gridPositions = [
@@ -62,15 +63,16 @@ function getMutagenClass(mutagen: string) {
 // Retrieve palace object for a given branch dynamically
 function getPalaceByBranch(branch: string) {
   // In iztro, earthlyBranch is always in Chinese ('子', '丑', '寅', etc.)
-  const branchMap: Record<string, string> = {
-    '巳': 'si', '午': 'wu', '未': 'wei', '申': 'shen',
-    '酉': 'you', '戌': 'xu', '亥': 'hai', '子': 'zi',
-    '丑': 'chou', '寅': 'yin', '卯': 'mao', '辰': 'chen'
+  // Note: in English mode, iztro translates '午' as 'woo' to distinguish from '戊' (wu)
+  const branchMap: Record<string, string[]> = {
+    '巳': ['si'], '午': ['wu', 'woo'], '未': ['wei'], '申': ['shen'],
+    '酉': ['you'], '戌': ['xu'], '亥': ['hai'], '子': ['zi'],
+    '丑': ['chou'], '寅': ['yin'], '卯': ['mao'], '辰': ['chen']
   };
-  const targetBranch = branchMap[branch] || branch;
+  const targets = branchMap[branch] || [branch];
   return store.activeChart?.palaces.find((p: any) => {
     const pBranch = p.earthlyBranch.toLowerCase();
-    return pBranch === branch || pBranch === targetBranch;
+    return pBranch === branch || targets.includes(pBranch);
   });
 }
 
@@ -92,10 +94,60 @@ function getHighlightState(index: number | undefined) {
   }
   return 'dimmed';
 }
+
+// Context Menu State
+const contextMenu = ref({
+  visible: false,
+  x: 0,
+  y: 0,
+  palace: null as any
+});
+
+function openContextMenu(e: Event, palace: any) {
+  e.preventDefault();
+  let clientX = 0;
+  let clientY = 0;
+  
+  if (window.TouchEvent && e instanceof TouchEvent) {
+    clientX = e.touches[0].clientX;
+    clientY = e.touches[0].clientY;
+  } else {
+    clientX = (e as MouseEvent).clientX;
+    clientY = (e as MouseEvent).clientY;
+  }
+  
+  contextMenu.value = {
+    visible: true,
+    x: clientX,
+    y: clientY,
+    palace
+  };
+}
+
+function closeContextMenu() {
+  contextMenu.value.visible = false;
+}
+
+function handleDeepAnalysis() {
+  if (contextMenu.value.palace) {
+    store.askAiDeepAnalysis(contextMenu.value.palace.name, contextMenu.value.palace);
+    // Dispatch a custom event to open mobile chat if on mobile
+    window.dispatchEvent(new CustomEvent('open-mobile-chat'));
+  }
+  closeContextMenu();
+}
+
+onMounted(() => {
+  window.addEventListener('click', closeContextMenu);
+});
+onUnmounted(() => {
+  window.removeEventListener('click', closeContextMenu);
+});
+
 </script>
 
 <template>
-  <div v-if="store.activeChart" class="space-y-6">
+  <div v-if="store.activeChart" class="space-y-6 relative">
     <!-- 1. Mobile View (Card List) -->
     <div class="block md:hidden space-y-4">
       <!-- Sticky Header -->
@@ -120,12 +172,13 @@ function getHighlightState(index: number | undefined) {
         </div>
       </div>
 
-      <!-- Expandable Palace List -->
       <div class="space-y-3">
         <div 
           v-for="p in store.activeChart.palaces" 
           :key="p.name"
-          class="rounded-xl border border-white/5 bg-space-900/60 p-4 shadow backdrop-blur-sm transition"
+          class="rounded-xl border border-zinc-800 bg-zinc-900/80 p-4 shadow backdrop-blur-sm transition touch-callout-none"
+          style="-webkit-touch-callout: none;"
+          @contextmenu.prevent="openContextMenu($event, p)"
         >
           <!-- Summary Header (Palace Name & Primary Stars) -->
           <div @click="togglePalace(p.name)" class="flex items-center justify-between cursor-pointer">
@@ -147,7 +200,7 @@ function getHighlightState(index: number | undefined) {
                   :key="s.name"
                   class="text-sm font-bold text-gold flex items-center gap-0.5"
                 >
-                  {{ s.name }}<span class="text-2xs font-normal text-white/40">({{ s.brightness }})</span>
+                  {{ s.name }}<span v-if="s.brightness" :class="s.brightness === '庙' || s.brightness === '旺' || s.brightness === 'Temple' || s.brightness === 'Prosperous' ? 'text-emerald-400' : s.brightness === '陷' || s.brightness === '平' || s.brightness === 'Trap' || s.brightness === 'Flat' ? 'text-rose-400' : 'text-white/40'" class="text-2xs font-normal">({{ s.brightness }})</span>
                   <span v-if="s.mutagen" :class="getMutagenClass(s.mutagen)" class="rounded px-1 text-3xs border scale-90">
                     {{ s.mutagen }}
                   </span>
@@ -183,7 +236,7 @@ function getHighlightState(index: number | undefined) {
             <div class="grid grid-cols-2 gap-2 text-3xs text-white/40 border-t border-white/5 pt-2">
               <div>{{ store.lang === 'zh' ? '长生神' : 'Longevity' }}: <span class="text-white/60">{{ p.changsheng12 }}</span></div>
               <div>{{ store.lang === 'zh' ? '大限' : 'Decade' }}: <span class="text-white/60">{{ p.decadal.range[0] }} - {{ p.decadal.range[1] }}</span></div>
-              <div class="col-span-2">{{ store.lang === 'zh' ? '岁数' : 'Ages' }}: <span class="text-white/60">{{ p.ages.slice(0, 8).join(', ') }}...</span></div>
+              <div class="col-span-2">{{ store.lang === 'zh' ? '流年/小限' : 'Yearly/Age' }}: <span class="text-white/60">{{ p.ages.slice(0, 8).join(', ') }}...</span></div>
             </div>
           </div>
         </div>
@@ -191,7 +244,7 @@ function getHighlightState(index: number | undefined) {
     </div>
 
     <!-- 2. PC View (Circular 12-Palace 4x4 Grid) -->
-    <div class="hidden md:grid grid-cols-4 grid-rows-4 gap-4 aspect-square max-w-[950px] w-full mx-auto border border-white/5 rounded-3xl bg-space-950/20 p-5 shadow-2xl backdrop-blur-xl animate-fade-in">
+    <div class="hidden md:grid grid-cols-4 grid-rows-4 gap-2 aspect-square max-w-[950px] w-full mx-auto border border-zinc-800 rounded-3xl bg-zinc-950 p-3 shadow-2xl backdrop-blur-xl animate-fade-in">
       <!-- Outer 12 Palaces -->
       <div 
         v-for="pos in gridPositions" 
@@ -199,16 +252,18 @@ function getHighlightState(index: number | undefined) {
         :style="{ gridRow: pos.row, gridColumn: pos.col }"
         @mouseenter="hoveredIndex = getPalaceByBranch(pos.branch)?.index ?? null"
         @mouseleave="hoveredIndex = null"
+        @contextmenu.prevent="openContextMenu($event, getPalaceByBranch(pos.branch))"
         :class="[
           getHighlightState(getPalaceByBranch(pos.branch)?.index) === 'target'
             ? 'border-gold bg-gold/15 scale-[1.03] shadow-lg shadow-gold/10 ring-1 ring-gold/40 z-10'
             : getHighlightState(getPalaceByBranch(pos.branch)?.index) === 'related'
-            ? 'border-gold/40 bg-space-900/85 scale-[1.015] shadow-md border-dashed z-10'
+            ? 'border-gold/40 bg-zinc-800 scale-[1.015] shadow-md border-dashed z-10'
             : getHighlightState(getPalaceByBranch(pos.branch)?.index) === 'dimmed'
-            ? 'opacity-25 scale-[0.98] border-white/5 blur-[0.4px]'
-            : 'border-white/5 bg-space-900/60'
+            ? 'opacity-25 scale-[0.98] border-zinc-800 blur-[0.4px]'
+        : 'border-zinc-800 bg-zinc-900'
         ]"
-        class="relative border rounded-2xl p-4 shadow-md backdrop-blur-sm flex flex-col justify-between hover:border-gold/40 hover:bg-space-900/80 transition-all duration-300 cursor-pointer select-none"
+        class="relative border rounded-2xl p-2 shadow-md backdrop-blur-sm flex flex-col hover:border-gold/40 hover:bg-zinc-800 transition-all duration-300 cursor-pointer select-none touch-callout-none"
+        style="-webkit-touch-callout: none;"
       >
         <!-- Palace Name Header -->
         <div class="flex items-start justify-between">
@@ -222,45 +277,59 @@ function getHighlightState(index: number | undefined) {
         </div>
 
         <!-- Major Stars (Destiny Core) -->
-        <div class="my-2 flex flex-col gap-1.5">
+        <div class="my-0.5 flex flex-col gap-1">
           <div 
             v-for="s in getPalaceByBranch(pos.branch)?.majorStars" 
             :key="s.name"
-            class="text-xs lg:text-base font-bold text-gold flex items-center justify-between"
+            class="group relative text-xs lg:text-[15px] font-bold text-gold flex items-center justify-between cursor-help leading-tight hover:z-9999"
           >
             <span>{{ s.name }}</span>
             <div class="flex items-center gap-1">
-              <span class="text-3xs lg:text-2xs font-normal text-white/40">({{ s.brightness }})</span>
+              <span v-if="s.brightness" :class="s.brightness === '庙' || s.brightness === '旺' || s.brightness === 'Temple' || s.brightness === 'Prosperous' ? 'text-emerald-400' : s.brightness === '陷' || s.brightness === '平' || s.brightness === 'Trap' || s.brightness === 'Flat' ? 'text-rose-400' : 'text-white/40'" class="text-3xs lg:text-2xs font-normal">({{ s.brightness }})</span>
               <span v-if="s.mutagen" :class="getMutagenClass(s.mutagen)" class="rounded px-0.5 py-0.2 text-3xs border scale-95 leading-none">
                 {{ s.mutagen }}
               </span>
+            </div>
+            <!-- Tooltip -->
+            <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block w-40 p-2 bg-space-950/95 backdrop-blur text-white text-[10px] lg:text-xs rounded shadow-xl border border-white/10 z-[9999] font-normal leading-relaxed pointer-events-none text-center">
+              {{ getStarMeaning(s.name) }}
             </div>
           </div>
         </div>
 
         <!-- Secondary (Lucky/Unlucky) & Tertiary Stars -->
-        <div class="flex flex-wrap gap-1.5 mb-2">
+        <div class="flex flex-wrap gap-1 mt-0.5 mb-1">
           <span 
             v-for="s in [...(getPalaceByBranch(pos.branch)?.minorStars || []), ...(getPalaceByBranch(pos.branch)?.adjectiveStars || [])]" 
             :key="s.name"
-            :class="isLuckyStar(s.name) ? 'text-emerald-400' : isUnluckyStar(s.name) ? 'text-rose-400' : 'text-white/40'"
-            class="text-3xs lg:text-xs font-medium tracking-tight flex items-center"
+            :class="isLuckyStar(s.name) ? 'text-emerald-400' : isUnluckyStar(s.name) ? 'text-rose-400' : 'text-gray-500 opacity-80'"
+            class="group relative text-[10px] font-medium tracking-tight flex items-center cursor-help leading-none hover:z-50"
           >
             {{ s.name }}<span v-if="s.mutagen" class="text-gold scale-75">*</span>
+            
+            <!-- Tooltip -->
+            <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover:block w-36 p-1.5 bg-space-950/95 backdrop-blur text-white text-[10px] rounded shadow-xl border border-white/10 z-[9999] font-normal leading-relaxed pointer-events-none text-center whitespace-normal">
+              {{ getStarMeaning(s.name) }}
+            </div>
           </span>
         </div>
 
-        <!-- Footer (Stem, Longevity, Decadal range) -->
-        <div class="flex items-center justify-between text-3xs lg:text-2xs text-white/30 border-t border-white/5 pt-1.5 mt-auto">
-          <span>{{ getPalaceByBranch(pos.branch)?.heavenlyStem }}</span>
-          <span>{{ getPalaceByBranch(pos.branch)?.changsheng12 }}</span>
-          <span>{{ getPalaceByBranch(pos.branch)?.decadal.range[0] }}-{{ getPalaceByBranch(pos.branch)?.decadal.range[1] }}</span>
+        <!-- Footer (Stem, Longevity, Decadal range, Ages) -->
+        <div class="flex flex-col gap-1 border-t border-zinc-800 pt-1.5 mt-auto leading-tight">
+          <div class="flex items-center justify-between text-[10px] text-white/30">
+            <span>{{ getPalaceByBranch(pos.branch)?.heavenlyStem }}</span>
+            <span class="text-gray-500">{{ getPalaceByBranch(pos.branch)?.changsheng12 }}</span>
+            <span class="font-medium text-white/50">{{ store.lang === 'zh' ? '大限' : 'Decade' }}: {{ getPalaceByBranch(pos.branch)?.decadal.range[0] }}-{{ getPalaceByBranch(pos.branch)?.decadal.range[1] }}</span>
+          </div>
+          <div class="flex items-center justify-end text-3xs lg:text-[0.65rem] text-white/30">
+            <span class="truncate opacity-75">{{ store.lang === 'zh' ? '流年' : 'Year' }}: {{ getPalaceByBranch(pos.branch)?.ages.slice(0, 5).join(', ') }}</span>
+          </div>
         </div>
       </div>
 
       <!-- Merged 2x2 Center Info Card -->
       <div 
-        class="gridRow-start-2 gridRow-end-4 gridColumn-start-2 gridColumn-end-4 col-start-2 col-end-4 row-start-2 row-end-4 border border-white/10 rounded-2xl bg-space-950/60 p-6 flex flex-col justify-between shadow-inner"
+        class="gridRow-start-2 gridRow-end-4 gridColumn-start-2 gridColumn-end-4 col-start-2 col-end-4 row-start-2 row-end-4 border border-zinc-800 rounded-2xl bg-zinc-950/60 p-6 flex flex-col justify-between shadow-inner"
       >
         <div class="space-y-5">
           <!-- Title / Meta -->
@@ -304,6 +373,29 @@ function getHighlightState(index: number | undefined) {
         </div>
       </div>
     </div>
+
+    <!-- Context Menu -->
+    <Teleport to="body">
+      <div 
+        v-if="contextMenu.visible" 
+        :style="{ top: `${contextMenu.y}px`, left: `${contextMenu.x}px` }"
+        class="fixed z-[100] w-48 bg-space-900/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl p-1 overflow-hidden"
+        @click.stop
+      >
+        <div class="px-3 py-2 border-b border-white/5 mb-1">
+          <span class="text-xs font-bold text-white/60">
+            {{ contextMenu.palace?.name }}
+          </span>
+        </div>
+        <button 
+          @click="handleDeepAnalysis"
+          class="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-gold hover:bg-gold/10 hover:text-yellow-400 rounded-lg transition"
+        >
+          <Sparkles class="h-4 w-4" />
+          ✨ AI 深度解盘
+        </button>
+      </div>
+    </Teleport>
   </div>
 
   <!-- Loading / Empty State -->
@@ -328,5 +420,9 @@ function getHighlightState(index: number | undefined) {
 }
 .text-2xs {
   font-size: 0.7rem;
+}
+.touch-callout-none {
+  -webkit-touch-callout: none;
+  user-select: none;
 }
 </style>

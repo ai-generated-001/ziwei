@@ -57,7 +57,7 @@ watch(() => store.aiStreamingText, scrollToBottom);
 </script>
 
 <template>
-  <div class="rounded-2xl border border-white/5 bg-space-900/60 p-5 shadow-lg backdrop-blur-md flex flex-col h-[500px]">
+  <div class="rounded-2xl border border-zinc-800 bg-zinc-900/50 p-5 shadow-lg backdrop-blur-md flex flex-col h-full overflow-hidden">
     <!-- Header -->
     <div class="flex items-center justify-between mb-4 border-b border-white/5 pb-3">
       <div class="flex items-center gap-2">

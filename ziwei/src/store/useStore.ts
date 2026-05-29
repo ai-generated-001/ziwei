@@ -372,6 +372,59 @@ ${summary}
     }
   },
 
+  async askAiDeepAnalysis(palaceName: string, palaceData: any) {
+    if (!this.settings.apiKey) {
+      this.aiError = this.lang === 'zh' ? '请先在设置中配置 API 密钥。' : 'Please configure your OpenRouter API Key in Settings first.';
+      return;
+    }
+
+    this.isAiLoading = true;
+    this.aiError = '';
+    this.aiStreamingText = '';
+
+    const majorStars = palaceData.majorStars.map((s: any) => s.name).join(', ') || '无主星';
+    const minorStars = [...palaceData.minorStars, ...palaceData.adjectiveStars].map((s: any) => s.name).join(', ');
+    const transformations = palaceData.majorStars.filter((s: any) => s.mutagen).map((s: any) => `${s.name}${s.mutagen}`).join(', ');
+
+    const systemPromptZh = `You are a master of ZiWei Dou Shu. The user wants to analyze their ${palaceName}.
+In this palace, the main stars are: ${majorStars}.
+Minor stars are: ${minorStars}.
+Transformations are: ${transformations || '无'}.
+Briefly interpret what this means for their destiny in this aspect. Please respond in Chinese.`;
+
+    const systemPromptEn = `You are a master of ZiWei Dou Shu. The user wants to analyze their ${palaceName}.
+In this palace, the main stars are: ${majorStars}.
+Minor stars are: ${minorStars}.
+Transformations are: ${transformations || 'None'}.
+Briefly interpret what this means for their destiny in this aspect. Please respond in English.`;
+
+    const systemPrompt = this.lang === 'zh' ? systemPromptZh : systemPromptEn;
+    const userDisplayMsg = this.lang === 'zh' ? `请帮我深度解析【${palaceName}】` : `Please do a deep analysis of my ${palaceName}.`;
+
+    const newUserMessage: ChatMessage = { role: 'user', content: userDisplayMsg };
+    const messagesToSend = [
+      { role: 'system', content: systemPrompt } as ChatMessage,
+      newUserMessage
+    ];
+
+    try {
+      this.chatHistory.push(newUserMessage);
+      await invoke('ask_ai', { messages: messagesToSend });
+      
+      if (this.aiStreamingText) {
+        this.chatHistory.push({
+          role: 'assistant',
+          content: this.aiStreamingText
+        });
+      }
+    } catch (e: any) {
+      console.error('AI Request failed:', e);
+      this.aiError = e.toString() || 'Failed to get response from AI.';
+    } finally {
+      this.isAiLoading = false;
+    }
+  },
+
   clearChat() {
     this.chatHistory = [];
     this.aiStreamingText = '';

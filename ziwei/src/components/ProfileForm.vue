@@ -88,7 +88,7 @@ const activeId = computed(() => store.activeProfile?.id || null);
 </script>
 
 <template>
-  <div class="rounded-2xl border border-white/5 bg-space-900/60 p-5 shadow-lg backdrop-blur-md">
+  <div class="rounded-2xl border border-zinc-800 bg-zinc-900/30 p-5 shadow-lg backdrop-blur-md">
     <div class="flex items-center gap-2 mb-4">
       <div class="rounded-lg bg-gold/10 p-1.5 text-gold">
         <Plus class="h-5 w-5" />
