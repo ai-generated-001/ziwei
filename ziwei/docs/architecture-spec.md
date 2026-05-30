@@ -58,7 +58,7 @@ To prevent LLM hallucination and token bloat, the raw `iztro` JSON MUST be prune
 * Create a TypeScript utility function: `extractChartSummary(iztroData)`.
 * This function extracts ONLY the essential data required for reading:
     * User Yin/Yang & Gender (阴阳男女), Five Elements Phase (五行局).
-    * The "San Fang Si Zheng" (三方四正 - Trine and Opposite palaces) for the Destiny Palace (命宫).
+    * Detailed configurations of all 12 Palaces (including major/minor stars, mutagen transformations, body palace flags, decadal age ranges, longevity/doctor states, and active decadal/yearly flying stars).
     * The current Decade (大限) and Current Year (流年) palaces and their major stars.
 * Convert this pruned object into a readable Markdown string to append as system context.
 
