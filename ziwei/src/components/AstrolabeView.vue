@@ -290,13 +290,18 @@ onUnmounted(() => {
             :key="s.name"
           >
             <TooltipTrigger as-child>
-              <div class="text-xs lg:text-[15px] font-bold text-gold flex items-center justify-between cursor-help leading-tight">
-                <span>{{ s.name }}</span>
-                <div class="flex items-center gap-1">
-                  <span v-if="s.brightness" :class="s.brightness === '庙' || s.brightness === '旺' || s.brightness === 'Temple' || s.brightness === 'Prosperous' ? 'text-emerald-400' : s.brightness === '陷' || s.brightness === '平' || s.brightness === 'Trap' || s.brightness === 'Flat' ? 'text-rose-400' : 'text-white/40'" class="text-3xs lg:text-2xs font-normal">({{ s.brightness }})</span>
-                  <span v-if="s.mutagen" :class="getMutagenClass(s.mutagen)" class="rounded px-0.5 py-0.2 text-3xs border scale-95 leading-none">
-                    {{ s.mutagen }}
-                  </span>
+              <div class="text-xs lg:text-[15px] font-bold text-gold flex items-center cursor-help leading-tight">
+                <div class="flex items-center gap-1.5">
+                  <span>{{ s.name }}</span>
+                  <div class="flex items-center gap-1">
+                    <span v-if="s.brightness" :class="s.brightness === '庙' || s.brightness === '旺' || s.brightness === 'Temple' || s.brightness === 'Prosperous' ? 'text-emerald-400' : s.brightness === '陷' || s.brightness === '平' || s.brightness === 'Trap' || s.brightness === 'Flat' ? 'text-rose-400' : 'text-white/40'" class="text-3xs lg:text-2xs font-normal">({{ s.brightness }})</span>
+                    <span v-if="s.mutagen" :class="getMutagenClass(s.mutagen)" class="rounded px-0.5 py-0.2 text-3xs border scale-95 leading-none">
+                      {{ s.mutagen }}
+                    </span>
+                  </div>
+                </div>
+                <div class="ml-auto" v-if="s.selfMutagen">
+                  <span class="text-[10px] text-white/40 border border-white/10 rounded px-1">{{ s.selfMutagen }}</span>
                 </div>
               </div>
             </TooltipTrigger>
