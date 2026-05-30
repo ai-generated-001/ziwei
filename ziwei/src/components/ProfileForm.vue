@@ -46,12 +46,14 @@ async function handleSubmit() {
 
   isSaving.value = true;
   try {
-    const profileId = Math.random().toString(36).substring(2, 11);
+    const trimmedName = name.value.trim();
+    const existingProfile = store.profiles.find(p => p.name.trim() === trimmedName);
+    const profileId = existingProfile ? existingProfile.id : Math.random().toString(36).substring(2, 11);
     const birthDate = `${birthDateStr.value} ${birthHourStr.value.padStart(2, '0')}`;
     
     const profileData = {
       id: profileId,
-      name: name.value,
+      name: trimmedName,
       gender: gender.value,
       birth_type: birthType.value,
       is_leap_month: birthType.value === 'lunar' ? isLeapMonth.value : false,
