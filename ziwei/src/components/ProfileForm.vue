@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { store } from '../store/useStore';
 import { User, Calendar, Clock, Plus } from 'lucide-vue-next';
 
@@ -46,7 +46,7 @@ async function handleSubmit() {
 
   isSaving.value = true;
   try {
-    const profileId = activeId.value || Math.random().toString(36).substring(2, 11);
+    const profileId = Math.random().toString(36).substring(2, 11);
     const birthDate = `${birthDateStr.value} ${birthHourStr.value.padStart(2, '0')}`;
     
     const profileData = {
@@ -85,6 +85,25 @@ async function handleSubmit() {
 }
 
 const activeId = computed(() => store.activeProfile?.id || null);
+
+watch(() => store.activeProfile, (newProfile) => {
+  if (newProfile) {
+    name.value = newProfile.name;
+    gender.value = newProfile.gender;
+    birthType.value = newProfile.birth_type;
+    isLeapMonth.value = newProfile.is_leap_month;
+    const parts = newProfile.birth_date.split(' ');
+    birthDateStr.value = parts[0];
+    birthHourStr.value = parseInt(parts[1] || '0', 10).toString();
+  } else {
+    name.value = '';
+    gender.value = '男';
+    birthType.value = 'solar';
+    isLeapMonth.value = false;
+    birthDateStr.value = '';
+    birthHourStr.value = '0';
+  }
+}, { immediate: true });
 </script>
 
 <template>
