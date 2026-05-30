@@ -22,11 +22,11 @@ A premium, cross-platform astrology desktop (PC) and mobile (Android) applicatio
 
 ## 🛠️ Tech Stack
 
-*   **Frontend**: Vue 3 (Composition API) + Tailwind CSS + Lucide Icons
+*   **Frontend**: Vue 3 (Composition API) + Custom Reactive Store + Tailwind CSS + Lucide Icons
 *   **Backend**: Rust (Tauri v2 Core)
 *   **Database**: SQLite (`rusqlite` crate with `bundled` feature)
 *   **Astrology Calculations**: `iztro` (TypeScript library)
-*   **AI Integration**: OpenRouter HTTP client with SSE parsing
+*   **AI Integration**: Rust-based OpenRouter HTTP client (`reqwest`) streaming SSE to the frontend via Tauri Events
 
 ---
 
@@ -38,19 +38,20 @@ A premium, cross-platform astrology desktop (PC) and mobile (Android) applicatio
 *   Rust (v1.75+) and build tools (C++ build tools on Windows)
 
 ### 1. Install Dependencies
-Run `pnpm install` in the project root directory:
+Run `pnpm install` in the `ziwei` directory:
 ```bash
+cd ziwei
 pnpm install
 ```
 
 ### 2. Launch Development Mode
-Run the Tauri development server:
+Run the Tauri development server from the `ziwei` directory:
 ```bash
 pnpm tauri dev
 ```
 
 ### 3. Build Production Bundles
-Build release bundles for your host platform:
+Build release bundles for your host platform from the `ziwei` directory:
 ```bash
 pnpm tauri build
 ```

@@ -8,7 +8,7 @@ A cross-platform desktop (PC) and mobile (Android) application built with **Taur
 * **Backend**: Rust (Tauri v2 Core).
 * **Astrology Engine**: `iztro` (TypeScript library, executed in the frontend).
 * **Database**: SQLite (built-in Rust `rusqlite` database layer accessed via Tauri commands).
-* **State Management**: Pinia or lightweight reactive Vue store.
+* **State Management**: Custom lightweight reactive Vue store (`useStore.ts`).
 
 ## 3. Architecture & Security Design
 **Rule:** The frontend MUST NOT hold any sensitive API keys or make direct network requests to OpenRouter. 
@@ -16,7 +16,7 @@ A cross-platform desktop (PC) and mobile (Android) application built with **Taur
 * **API Key Management**: 
     * Users will input their OpenRouter API Key in a "Settings" modal.
     * The frontend will pass this key to the Rust backend via Tauri `invoke`.
-    * Rust will securely store the key locally using `tauri-plugin-store` or native OS secure storage.
+    * Rust will securely store the key locally in a `settings.json` file within the application's configuration directory.
 * **AI Network Requests**:
     * Frontend constructs the prompt and calls a Tauri Rust command (e.g., `invoke("ask_ai", { prompt, context })`).
     * Rust backend constructs the HTTP request, attaches the securely stored API key, calls the OpenRouter API, and streams the response back to the frontend using Tauri Events (`emit`).
@@ -70,8 +70,8 @@ To prevent LLM hallucination and token bloat, the raw `iztro` JSON MUST be prune
     * "What should I watch out for in my Marriage/Relationships? (感情婚姻建议)"
 * **Context Window**: Maintain the last 5 turns of conversation in the Vue state. Pass this history along with the `ChartSummary` to the Rust proxy for every follow-up question to ensure conversational memory.
 
-## 7. Next Steps for AI Generation
-To the AI Coding Assistant: Please begin by setting up the Tauri v2 backend commands for OpenRouter proxying and SQLite initialization. Then, proceed to scaffold the Vue frontend, starting with the `iztro` integration and the responsive layout (Grid vs List).
+## 7. Development Status
+The core scaffolding, including the Tauri Rust backend for SQLite and OpenRouter proxying, as well as the Vue frontend with responsive UI and `iztro` integration, has been fully implemented.
 
 ## 8. Documentation Maintenance
 ALWAYS update this spec file accordingly when making code changes, and keep this rule.
