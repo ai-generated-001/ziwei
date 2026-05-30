@@ -80,7 +80,7 @@ const translations = {
     presetRelations: '分析感情与婚姻',
   },
   en: {
-    title: 'ZiWei AI Analyzer',
+    title: 'ZiWei Analyzer',
     subtitle: 'Purple Star Astrology Oracle',
     activeChart: 'Active Chart',
     settings: 'Settings',
@@ -136,16 +136,16 @@ const translations = {
 
 export const store = reactive({
   lang: 'zh' as 'zh' | 'en',
-  
+
   settings: {
     apiKey: '',
-    model: 'google/gemini-2.5-flash',
+    model: 'google/gemini-3.5-flash',
   } as AppSettings,
-  
+
   profiles: [] as Profile[],
   activeProfile: null as Profile | null,
   activeChart: null as any | null,
-  
+
   chatHistory: [] as ChatMessage[],
   isAiLoading: false,
   aiStreamingText: '',
@@ -162,7 +162,7 @@ export const store = reactive({
     this.lang = newLang;
     // Save settings back with lang
     this.saveSettings(this.settings.apiKey, this.settings.model);
-    
+
     // Recompute active chart if one is loaded
     if (this.activeProfile) {
       this.selectProfile(this.activeProfile);
@@ -181,7 +181,7 @@ export const store = reactive({
     try {
       const data = await invoke<AppSettings>('load_settings');
       this.settings.apiKey = data.apiKey || '';
-      this.settings.model = data.model || 'google/gemini-2.5-flash';
+      this.settings.model = data.model || 'google/gemini-3.5-flash';
       if (data.lang === 'en' || data.lang === 'zh') {
         this.lang = data.lang;
       }
@@ -194,12 +194,12 @@ export const store = reactive({
     try {
       this.settings.apiKey = apiKey;
       this.settings.model = model;
-      await invoke('save_settings', { 
-        settings: { 
-          apiKey, 
+      await invoke('save_settings', {
+        settings: {
+          apiKey,
           model,
           lang: this.lang
-        } 
+        }
       });
     } catch (e) {
       console.error('Failed to save settings:', e);
@@ -255,17 +255,17 @@ export const store = reactive({
     this.chatHistory = [];
     this.aiStreamingText = '';
     this.aiError = '';
-    
+
     try {
       // Date: YYYY-MM-DD, Hour: HH
       const parts = profile.birth_date.split(' ');
       const dateStr = parts[0]; // YYYY-MM-DD
       const hourStr = parts[1] || '00';
       const hourNum = parseInt(hourStr, 10);
-      
+
       const genderStr = profile.gender;
       const targetLang = this.lang === 'en' ? 'en-US' : 'zh-CN';
-      
+
       if (profile.birth_type === 'solar') {
         this.activeChart = astro.bySolar(
           dateStr,
@@ -345,7 +345,7 @@ ${summary}
     // Construct history: limit to last 5 turns of conversation
     const newUserMessage: ChatMessage = { role: 'user', content: userPrompt };
     const recentHistory = this.chatHistory.slice(-10); // 10 messages = 5 turns
-    
+
     const messagesToSend = [
       { role: 'system', content: systemPrompt } as ChatMessage,
       ...recentHistory,
@@ -354,10 +354,10 @@ ${summary}
 
     try {
       this.chatHistory.push(newUserMessage);
-      
+
       // Call Rust backend async command
       await invoke('ask_ai', { messages: messagesToSend });
-      
+
       if (this.aiStreamingText) {
         this.chatHistory.push({
           role: 'assistant',
@@ -386,17 +386,61 @@ ${summary}
     const minorStars = [...palaceData.minorStars, ...palaceData.adjectiveStars].map((s: any) => s.name).join(', ');
     const transformations = palaceData.majorStars.filter((s: any) => s.mutagen).map((s: any) => `${s.name}${s.mutagen}`).join(', ');
 
-    const systemPromptZh = `You are a master of ZiWei Dou Shu. The user wants to analyze their ${palaceName}.
-In this palace, the main stars are: ${majorStars}.
-Minor stars are: ${minorStars}.
-Transformations are: ${transformations || '无'}.
-Briefly interpret what this means for their destiny in this aspect. Please respond in Chinese.`;
+    const systemPromptZh = `# Role
+你是一位精通紫微斗数（三合派与四化派）的命理宗师。你的分析客观、深刻，既懂古法，又能结合现代人的职场和情感现状进行解读。
 
-    const systemPromptEn = `You are a master of ZiWei Dou Shu. The user wants to analyze their ${palaceName}.
-In this palace, the main stars are: ${majorStars}.
-Minor stars are: ${minorStars}.
-Transformations are: ${transformations || 'None'}.
-Briefly interpret what this means for their destiny in this aspect. Please respond in English.`;
+# Task
+根据用户提供的宫位数据，进行深度解析。
+当前分析宫位：${palaceName}
+主星：${majorStars}
+辅星/杂曜：${minorStars}
+四化：${transformations || '无'}
+
+# Workflow (思维链)
+在输出最终结论前，请严格按照以下步骤在后台进行逻辑推演：
+1. 【定主基调】：分析该宫位内的主星（如紫微、七杀），判断其在十二长生中的状态（庙旺利陷），定出吉凶基调。
+2. 【观四化】：寻找宫位内的化禄、化权、化科、化忌。四化是引发事件的灵魂，优先解释四化对主星的改变。
+3. 【查吉凶辅星】：分析六吉星（左辅右弼等）带来的助力，以及六煞星（火铃羊陀空劫）带来的破坏或激发力。注意特殊的星曜互涉（如火贪格、铃贪格等）。
+4. 【环境互动】：结合大限或流年的状态，判断该宫位目前的活跃度。
+
+# Output Format (严格按照此结构输出给用户)
+- **核心特质**：用一句话精准概括该宫位的整体状态。
+- **深度解析**：分点详细论述主星与辅星的化学反应（避免简单的词典堆砌，要讲逻辑）。
+- **潜在风险**：指出煞星或化忌可能带来的具体负面影响或心理盲区。
+- **宗师建议**：结合现代生活（如职场避坑、情感沟通），给出 2-3 条切实可行的行动指南。
+
+# Constraint
+- 绝不使用模棱两可的废话（如“你有时外向有时内向”）。
+- 如果宫位无主星，必须说明“此宫无主星，具有借对宫星曜的特质，且状态较不稳定”。
+- 语气需专业、平和，避免老好人式的无实际意义表述，排版清晰易读。`;
+
+    const systemPromptEn = `# Role
+You are a master of ZiWei Dou Shu (Sanhe and Si Hua schools). Your analysis is objective, profound, and combines ancient wisdom with modern career and relationship contexts.
+
+# Task
+Perform a deep analysis based on the provided palace data.
+Target Palace: ${palaceName}
+Major Stars: ${majorStars}
+Minor Stars: ${minorStars}
+Transformations: ${transformations || 'None'}
+
+# Workflow (Chain of Thought)
+Before outputting the final conclusion, please strictly follow these steps for logical deduction in the background:
+1. [Determine the Tone]: Analyze the major stars in the palace, judge their brightness/status, and determine the auspicious/inauspicious tone.
+2. [Observe Transformations (Si Hua)]: Look for Hua Lu, Hua Quan, Hua Ke, and Hua Ji. Transformations are the soul of events; prioritize their impact on major stars.
+3. [Check Minor/Auxiliary Stars]: Analyze the assistance of auspicious stars and the disruption/stimulation of inauspicious stars. Note special star combinations.
+4. [Environmental Interaction]: Combine with the state of the decade or annual cycles to judge the current activity of this palace.
+
+# Output Format (Strictly follow this structure)
+- **Core Traits**: Precisely summarize the overall state of the palace in one sentence.
+- **Deep Analysis**: Detail the chemical reaction between major and minor stars logically (avoid simple dictionary stacking).
+- **Potential Risks**: Point out specific negative impacts or psychological blind spots brought by inauspicious stars or Hua Ji.
+- **Master's Advice**: Combine with modern life (e.g., career pitfalls, relationship communication) to provide 2-3 practical action guides.
+
+# Constraint
+- Never use ambiguous nonsense (e.g., "Sometimes you are extroverted, sometimes introverted").
+- If the palace has no major stars, you must state: "This palace has no major stars; it borrows traits from the opposite palace and its state is relatively unstable."
+- The tone must be professional and calm. Avoid meaningless people-pleasing statements. Keep the formatting clear and readable.`;
 
     const systemPrompt = this.lang === 'zh' ? systemPromptZh : systemPromptEn;
     const userDisplayMsg = this.lang === 'zh' ? `请帮我深度解析【${palaceName}】` : `Please do a deep analysis of my ${palaceName}.`;
@@ -410,7 +454,7 @@ Briefly interpret what this means for their destiny in this aspect. Please respo
     try {
       this.chatHistory.push(newUserMessage);
       await invoke('ask_ai', { messages: messagesToSend });
-      
+
       if (this.aiStreamingText) {
         this.chatHistory.push({
           role: 'assistant',

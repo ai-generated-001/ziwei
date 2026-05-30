@@ -12,10 +12,15 @@ const successMsg = ref('');
 const isSubmitting = ref(false);
 
 const models = [
-  { id: 'google/gemini-2.5-flash', name: 'Gemini 2.5 Flash (Recommended)' },
-  { id: 'google/gemini-2.5-pro', name: 'Gemini 2.5 Pro' },
+  { id: 'google/gemini-3.5-flash', name: 'Gemini 3.5 Flash (Recommended)' },
+  { id: 'google/gemini-3.1-pro', name: 'Gemini 3.1 Pro' },
+  { id: 'anthropic/claude-3.7-sonnet', name: 'Claude 3.7 Sonnet' },
+  { id: 'openai/gpt-4.5-preview', name: 'GPT-4.5' },
+  { id: 'openai/o3-mini', name: 'GPT o3-mini' },
   { id: 'meta-llama/llama-3.3-70b-instruct', name: 'Llama 3.3 70B' },
-  { id: 'deepseek/deepseek-chat', name: 'DeepSeek Chat (V3)' },
+  { id: 'deepseek/deepseek-v4-flash', name: 'DeepSeek V4 Flash' },
+  { id: 'deepseek/deepseek-chat', name: 'DeepSeek V3/V4 Chat' },
+  { id: 'deepseek/deepseek-r1', name: 'DeepSeek R1' },
 ];
 
 async function handleSave() {

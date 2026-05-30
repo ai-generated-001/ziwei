@@ -1,4 +1,4 @@
-# Architecture & Implementation Specification: ZiWei AI Analyzer
+# Architecture & Implementation Specification: ZiWei Analyzer
 
 ## 1. Project Overview
 A cross-platform desktop (PC) and mobile (Android) application built with **Tauri v2**. The application performs "Zi Wei Dou Shu" (Purple Star Astrology) calculations using the `iztro` library, manages user profiles, visualizes the astrological chart (responsively adapting to PC/Mobile), and provides an interactive AI interpretation engine powered by OpenRouter.

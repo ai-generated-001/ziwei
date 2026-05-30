@@ -169,8 +169,8 @@ async fn ask_ai(messages: Vec<ChatMessage>, app_handle: AppHandle) -> Result<(),
         .post("https://openrouter.ai/api/v1/chat/completions")
         .header("Authorization", format!("Bearer {}", api_key))
         .header("Content-Type", "application/json")
-        .header("HTTP-Referer", "https://github.com/SylarLong/iztro")
-        .header("X-Title", "ZiWei AI Analyzer")
+        .header("HTTP-Referer", "https://github.com/ai-generated-001/ziwei")
+        .header("X-Title", "ZiWei Analyzer")
         .json(&json!({
             "model": model,
             "messages": messages,

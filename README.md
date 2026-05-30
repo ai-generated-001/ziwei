@@ -1,4 +1,4 @@
-# ZiWei AI Analyzer 🌌
+# ZiWei Analyzer 🌌
 
 A premium, cross-platform astrology desktop (PC) and mobile (Android) application built with **Tauri v2**, **Vue 3**, and **Tailwind CSS**. It calculates traditional Chinese **Zi Wei Dou Shu (Purple Star Astrology / 紫微斗数)** charts locally using the `iztro` library, manages user profiles in an archived SQLite database, and features an interactive **AI Astrologer Oracle** powered by OpenRouter.
 
