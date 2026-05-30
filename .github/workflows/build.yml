@@ -5,6 +5,8 @@ on:
     branches: [ main ]
   pull_request:
     branches: [ main ]
+  release:
+    types: [ created ]
 
 jobs:
   build-windows:
@@ -124,3 +126,29 @@ jobs:
           # 使用通配符，确保无论 Gradle 打出单架构包还是 Universal 包都能被捕获
           path: ziwei/src-tauri/gen/android/app/build/outputs/apk/**/*.apk
           retention-days: 30
+
+  upload-release-assets:
+    name: Upload Release Assets
+    if: github.event_name == 'release'
+    needs: [ build-windows, build-android ]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download Windows EXE artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: app-exe
+          path: release-assets/
+
+      - name: Download Android APK artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: app-apk
+          path: release-assets/
+
+      - name: Upload assets to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release-assets/*
