@@ -101,6 +101,27 @@ function getHighlightState(index: number | undefined) {
   return 'dimmed';
 }
 
+function getDynamicData(palace: any) {
+  if (!palace) return null;
+  const result: { decadeOverlapName?: string, yearlyOverlapName?: string, transitStars: any[] } = { transitStars: [] };
+  
+  if (store.activeDecade) {
+    result.decadeOverlapName = (store.lang === 'zh' ? "大限" : "Decade ") + store.activeDecade.palaceNames[palace.index];
+    if (store.activeDecade.stars && store.activeDecade.stars[palace.index]) {
+      result.transitStars.push(...store.activeDecade.stars[palace.index]);
+    }
+  }
+  
+  if (store.activeYear) {
+    result.yearlyOverlapName = (store.lang === 'zh' ? "流年" : "Yearly ") + store.activeYear.palaceNames[palace.index];
+    if (store.activeYear.stars && store.activeYear.stars[palace.index]) {
+      result.transitStars.push(...store.activeYear.stars[palace.index]);
+    }
+  }
+
+  return result;
+}
+
 // Context Menu State
 const contextMenu = ref({
   visible: false,
@@ -239,11 +260,52 @@ onUnmounted(() => {
               </span>
             </div>
 
+            <!-- Dynamic Overlaps (Mobile) -->
+            <div v-if="store.activeDecade || store.activeYear" class="flex-1 flex flex-col justify-center gap-1 mt-2 mb-2 overflow-hidden bg-white/5 rounded-lg p-2">
+              <div class="flex items-center gap-2 overflow-hidden">
+                <div v-if="getDynamicData(p)?.decadeOverlapName" class="text-[11px] font-semibold text-purple-400/80 truncate">
+                  {{ getDynamicData(p)?.decadeOverlapName }}
+                </div>
+                <div v-if="getDynamicData(p)?.yearlyOverlapName" class="text-[11px] font-semibold text-red-400/80 truncate">
+                  {{ getDynamicData(p)?.yearlyOverlapName }}
+                </div>
+              </div>
+              <div class="flex flex-wrap gap-1 mt-0.5" v-if="getDynamicData(p)?.transitStars?.length">
+                <span 
+                  v-for="ts in getDynamicData(p)?.transitStars" 
+                  :key="ts.name"
+                  class="text-[10px] bg-white/5 text-white/60 px-1 py-0.5 rounded border border-white/10"
+                >
+                  {{ ts.name }}<span v-if="ts.mutagen" :class="getMutagenClass(ts.mutagen)" class="ml-0.5 px-0.5 rounded text-[8px]">{{ts.mutagen}}</span>
+                </span>
+              </div>
+            </div>
+
             <!-- Muted Details -->
             <div class="grid grid-cols-2 gap-2 text-3xs text-white/40 border-t border-white/5 pt-2">
               <div>{{ store.lang === 'zh' ? '长生神' : 'Longevity' }}: <span class="text-white/60">{{ p.changsheng12 }}</span></div>
-              <div>{{ store.lang === 'zh' ? '大限' : 'Decade' }}: <span class="text-white/60">{{ p.decadal.range[0] }} - {{ p.decadal.range[1] }}</span></div>
-              <div class="col-span-2">{{ store.lang === 'zh' ? '流年/小限' : 'Yearly/Age' }}: <span class="text-white/60">{{ p.ages.slice(0, 8).join(', ') }}...</span></div>
+              <div>
+                {{ store.lang === 'zh' ? '大限' : 'Decade' }}: 
+                <span 
+                  @click.stop="store.toggleDecade(p.index)"
+                  class="cursor-pointer hover:text-white transition"
+                  :class="store.activeDecade?.index === p.index ? 'text-purple-400 font-bold bg-purple-500/20 px-1 rounded' : 'text-white/60'"
+                >
+                  {{ p.decadal.range[0] }} - {{ p.decadal.range[1] }}
+                </span>
+              </div>
+              <div class="col-span-2 flex items-center gap-1">
+                {{ store.lang === 'zh' ? '流年/小限' : 'Yearly/Age' }}: 
+                <span 
+                  v-for="age in p.ages.slice(0, 8)" 
+                  :key="age"
+                  @click.stop="store.toggleYear(age)"
+                  class="cursor-pointer hover:text-white transition"
+                  :class="store.activeYear?.age === age ? 'text-red-400 font-bold bg-red-500/20 px-1 rounded' : 'text-white/60'"
+                >
+                  {{ age }}
+                </span>
+              </div>
             </div>
           </div>
         </div>
@@ -251,7 +313,7 @@ onUnmounted(() => {
     </div>
 
     <!-- 2. PC View (Circular 12-Palace 4x4 Grid) -->
-    <div class="hidden md:grid grid-cols-4 grid-rows-4 gap-2 aspect-square max-w-[950px] w-full mx-auto border border-zinc-800 rounded-3xl bg-zinc-950 p-3 shadow-2xl backdrop-blur-xl animate-fade-in">
+    <div class="hidden md:grid grid-cols-[1.2fr_0.8fr_0.8fr_1.2fr] grid-rows-[1.2fr_0.8fr_0.8fr_1.2fr] gap-2 aspect-square max-w-[950px] w-full mx-auto border border-zinc-800 rounded-3xl bg-zinc-950 p-3 shadow-2xl backdrop-blur-xl animate-fade-in">
       <!-- Outer 12 Palaces -->
       <div 
         v-for="pos in gridPositions" 
@@ -335,15 +397,53 @@ onUnmounted(() => {
           </Tooltip>
         </div>
 
+        <!-- Dynamic Overlaps Container -->
+        <div class="flex-1 flex flex-col justify-center gap-1 mt-1 mb-1 overflow-hidden">
+          <div class="flex items-center gap-2 overflow-hidden">
+            <div v-if="getDynamicData(getPalaceByBranch(pos.branch))?.decadeOverlapName" class="text-[11px] font-semibold text-purple-400/80 truncate">
+              {{ getDynamicData(getPalaceByBranch(pos.branch))?.decadeOverlapName }}
+            </div>
+            <div v-if="getDynamicData(getPalaceByBranch(pos.branch))?.yearlyOverlapName" class="text-[11px] font-semibold text-red-400/80 truncate">
+              {{ getDynamicData(getPalaceByBranch(pos.branch))?.yearlyOverlapName }}
+            </div>
+          </div>
+          <div class="flex flex-wrap gap-1 mt-0.5" v-if="getDynamicData(getPalaceByBranch(pos.branch))?.transitStars?.length">
+            <span 
+              v-for="ts in getDynamicData(getPalaceByBranch(pos.branch))?.transitStars" 
+              :key="ts.name"
+              class="text-[9px] bg-white/5 text-white/60 px-1 py-0.5 rounded border border-white/10 leading-none"
+            >
+              {{ ts.name }}<span v-if="ts.mutagen" :class="getMutagenClass(ts.mutagen)" class="ml-0.5 px-0.5 rounded text-[8px]">{{ts.mutagen}}</span>
+            </span>
+          </div>
+        </div>
+
         <!-- Footer (Stem, Longevity, Decadal range, Ages) -->
         <div class="flex flex-col gap-1 border-t border-zinc-800 pt-1.5 mt-auto leading-tight">
           <div class="flex items-center justify-between text-[10px] text-white/30">
             <span>{{ getPalaceByBranch(pos.branch)?.heavenlyStem }}</span>
             <span class="text-gray-500">{{ getPalaceByBranch(pos.branch)?.changsheng12 }}</span>
-            <span class="font-medium text-white/50">{{ store.lang === 'zh' ? '大限' : 'Decade' }}: {{ getPalaceByBranch(pos.branch)?.decadal.range[0] }}-{{ getPalaceByBranch(pos.branch)?.decadal.range[1] }}</span>
+            <span 
+              @click.stop="store.toggleDecade(getPalaceByBranch(pos.branch)?.index)"
+              class="font-medium cursor-pointer hover:text-white transition"
+              :class="store.activeDecade?.index === getPalaceByBranch(pos.branch)?.index ? 'text-purple-400 font-bold bg-purple-500/20 px-1 rounded' : 'text-white/50'"
+            >
+              {{ store.lang === 'zh' ? '大限' : 'Decade' }}: {{ getPalaceByBranch(pos.branch)?.decadal.range[0] }}-{{ getPalaceByBranch(pos.branch)?.decadal.range[1] }}
+            </span>
           </div>
-          <div class="flex items-center justify-end text-3xs lg:text-[0.65rem] text-white/30">
-            <span class="truncate opacity-75">{{ store.lang === 'zh' ? '流年' : 'Year' }}: {{ getPalaceByBranch(pos.branch)?.ages.slice(0, 5).join(', ') }}</span>
+          <div class="flex items-center justify-end text-3xs lg:text-[0.65rem] text-white/30 gap-1 mt-0.5">
+            <span class="opacity-75">{{ store.lang === 'zh' ? '流年' : 'Year' }}:</span>
+            <div class="flex items-center gap-1">
+              <span 
+                v-for="age in getPalaceByBranch(pos.branch)?.ages.slice(0, 5)" 
+                :key="age"
+                @click.stop="store.toggleYear(age)"
+                class="cursor-pointer hover:text-white transition"
+                :class="store.activeYear?.age === age ? 'text-red-400 font-bold bg-red-500/20 px-1 rounded' : ''"
+              >
+                {{ age }}
+              </span>
+            </div>
           </div>
         </div>
       </div>

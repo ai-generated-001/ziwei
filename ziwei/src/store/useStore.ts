@@ -145,6 +145,8 @@ export const store = reactive({
   profiles: [] as Profile[],
   activeProfile: null as Profile | null,
   activeChart: null as any | null,
+  activeDecade: null as any | null,
+  activeYear: null as any | null,
 
   chatHistory: [] as ChatMessage[],
   isAiLoading: false,
@@ -255,6 +257,8 @@ export const store = reactive({
     this.chatHistory = [];
     this.aiStreamingText = '';
     this.aiError = '';
+    this.activeDecade = null;
+    this.activeYear = null;
 
     try {
       // Date: YYYY-MM-DD, Hour: HH
@@ -288,6 +292,48 @@ export const store = reactive({
       console.error('Failed to calculate chart:', e);
       this.activeChart = null;
     }
+  },
+
+  // Toggle Decade based on palace index
+  toggleDecade(palaceIndex: number) {
+    if (!this.activeChart || !this.activeProfile) return;
+    
+    // If clicking the same decade, toggle it off
+    if (this.activeDecade && this.activeDecade.index === palaceIndex) {
+      this.activeDecade = null;
+      this.activeYear = null; // also clear year if decade is cleared
+      return;
+    }
+
+    const p = this.activeChart.palaces[palaceIndex];
+    const age = p.decadal.range[0]; // first age in that decade
+    const birthYear = parseInt(this.activeProfile.birth_date.split('-')[0], 10);
+    const targetYear = birthYear + age - 1;
+    
+    // Calculate horoscope for a date in the target year
+    const h = this.activeChart.horoscope(`${targetYear}-06-01`);
+    this.activeDecade = h.decadal;
+    this.activeYear = null; // reset year when changing decade
+  },
+
+  // Toggle Year based on an age
+  toggleYear(age: number) {
+    if (!this.activeChart || !this.activeProfile) return;
+    
+    const birthYear = parseInt(this.activeProfile.birth_date.split('-')[0], 10);
+    const targetYear = birthYear + age - 1;
+    const h = this.activeChart.horoscope(`${targetYear}-06-01`);
+
+    // If clicking the same year, toggle it off
+    if (this.activeYear && this.activeYear.age === age) { // wait, yearly doesn't have age directly but we can track it or just use targetYear. Actually h.age exists.
+      this.activeYear = null;
+      return;
+    }
+
+    this.activeDecade = h.decadal; // automatically set decade
+    this.activeYear = h.yearly;
+    // inject age into yearly for tracking toggle state
+    this.activeYear.age = age;
   },
 
   // AI Streaming Listener
