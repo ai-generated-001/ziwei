@@ -2,6 +2,7 @@
 import { ref, watch, nextTick, computed } from 'vue';
 import { store } from '../store/useStore';
 import { Send, Sparkles, RefreshCw, AlertCircle, Bot, User, Trash2 } from 'lucide-vue-next';
+import MarkdownRenderer from './MarkdownRenderer.vue';
 
 const messageText = ref('');
 const chatScrollContainer = ref<HTMLDivElement | null>(null);
@@ -116,9 +117,11 @@ watch(() => store.aiStreamingText, scrollToBottom);
         <!-- Bubble -->
         <div 
           :class="msg.role === 'user' ? 'bg-gold/15 text-white border-gold/20' : 'bg-space-950/60 text-white/95 border-white/5'"
-          class="rounded-2xl border px-3.5 py-2 text-sm max-w-[85%] break-words whitespace-pre-line leading-relaxed shadow-sm font-sans"
+          class="rounded-2xl border px-3.5 py-2 text-sm max-w-[85%] break-words leading-relaxed shadow-sm font-sans"
+          :style="msg.role === 'user' ? 'white-space: pre-line' : ''"
         >
-          {{ msg.content }}
+          <MarkdownRenderer v-if="msg.role !== 'user'" :content="msg.content" />
+          <template v-else>{{ msg.content }}</template>
         </div>
 
         <div 
@@ -134,8 +137,8 @@ watch(() => store.aiStreamingText, scrollToBottom);
         <div class="h-7 w-7 rounded-full bg-gold/10 border border-gold/20 flex items-center justify-center text-gold shrink-0 mt-0.5">
           <Bot class="h-4 w-4" />
         </div>
-        <div class="bg-space-950/60 text-white/95 border-white/5 rounded-2xl border px-3.5 py-2 text-sm max-w-[85%] break-words whitespace-pre-line leading-relaxed shadow-sm font-sans">
-          {{ store.aiStreamingText }}
+        <div class="bg-space-950/60 text-white/95 border-white/5 rounded-2xl border px-3.5 py-2 text-sm max-w-[85%] break-words leading-relaxed shadow-sm font-sans">
+          <MarkdownRenderer :content="store.aiStreamingText" />
           <span class="inline-block w-1.5 h-4 ml-1 bg-gold animate-pulse"></span>
         </div>
       </div>

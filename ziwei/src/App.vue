@@ -6,6 +6,7 @@ import ProfileList from './components/ProfileList.vue';
 import AstrolabeView from './components/AstrolabeView.vue';
 import ChatPanel from './components/ChatPanel.vue';
 import SettingsModal from './components/SettingsModal.vue';
+import TitleBar from './components/TitleBar.vue';
 import { Settings, Compass, Sparkles, AlertCircle, MessageSquare } from 'lucide-vue-next';
 import { Splitpanes, Pane } from 'splitpanes';
 import 'splitpanes/dist/splitpanes.css';
@@ -33,6 +34,9 @@ onUnmounted(() => {
 
 <template>
   <div class="h-screen w-screen overflow-hidden bg-[#0B0F19] text-zinc-50 flex flex-col font-sans">
+    <!-- Custom Title Bar (replaces native OS decorations) -->
+    <TitleBar />
+
     <!-- Navigation / Header -->
     <header class="border-b border-zinc-800 bg-[#0B0F19]/80 backdrop-blur-md sticky top-0 z-40 px-6 py-4 shadow-sm shrink-0">
       <div class="max-w-[1600px] w-full mx-auto flex items-center justify-between">
@@ -101,11 +105,7 @@ onUnmounted(() => {
           </Pane>
 
           <Pane min-size="30" size="55" class="px-3 h-full overflow-hidden">
-            <section class="bg-transparent border-none rounded-3xl p-2 h-full flex flex-col">
-              <div class="flex items-center justify-between mb-4 border-b border-white/5 pb-2 shrink-0">
-                <h2 class="font-bold text-white tracking-wide text-md">{{ store.t('astrolabeChart') }}</h2>
-                <span class="text-3xs text-white/40 uppercase">{{ store.t('interactiveGrid') }}</span>
-              </div>
+            <section class="bg-transparent border-none rounded-3xl h-full flex flex-col">
               <div class="flex-1 overflow-y-auto custom-scrollbar pr-2">
                 <AstrolabeView />
               </div>

@@ -27,7 +27,7 @@ export interface AppSettings {
 
 const translations = {
   zh: {
-    title: '紫微斗数 AI 分析仪',
+    title: '紫微斗数分析',
     subtitle: '紫微斗数智能命盘分析',
     activeChart: '当前命盘',
     settings: '设置',
@@ -288,9 +288,39 @@ export const store = reactive({
           targetLang
         );
       }
+
+      // Auto-highlight current year's 流年 (yearly fortune)
+      this.autoHighlightCurrentYear();
     } catch (e) {
       console.error('Failed to calculate chart:', e);
       this.activeChart = null;
+    }
+  },
+
+  // Auto-highlight current 大限 (decade) and 流年 (yearly) based on birthday and current time
+  autoHighlightCurrentYear() {
+    if (!this.activeChart || !this.activeProfile) return;
+
+    try {
+      const birthYear = parseInt(this.activeProfile.birth_date.split('-')[0], 10);
+      const now = new Date();
+      const currentYear = now.getFullYear();
+
+      // Chinese age (虚岁): birth year counts as age 1
+      const currentAge = currentYear - birthYear + 1;
+
+      if (currentAge < 1) return;
+
+      // Use today's date for accurate horoscope calculation
+      const todayStr = `${currentYear}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+      const h = this.activeChart.horoscope(todayStr);
+
+      this.activeDecade = h.decadal;
+      this.activeYear = h.yearly;
+      // Inject age for toggle state tracking (consistent with toggleYear)
+      this.activeYear.age = currentAge;
+    } catch (e) {
+      console.error('Failed to auto-highlight current year:', e);
     }
   },
 

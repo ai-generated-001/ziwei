@@ -12,9 +12,13 @@
   "app": {
     "windows": [
       {
-        "title": "ziwei",
-        "width": 800,
-        "height": 600
+        "title": "紫微斗数分析",
+        "width": 1200,
+        "height": 800,
+        "maximized": true,
+        "decorations": false,
+        "transparent": true,
+        "theme": "Dark"
       }
     ],
     "security": {

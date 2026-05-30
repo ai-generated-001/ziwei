@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { store } from '../store/useStore';
 import { Compass, ChevronDown, ChevronUp, Sparkles } from 'lucide-vue-next';
 import { getStarMeaning } from '../utils/starDictionary';
@@ -82,6 +82,15 @@ function getPalaceByBranch(branch: string) {
   });
 }
 
+// Compute the current Chinese age (虚岁) for highlighting
+const currentAge = computed(() => {
+  if (!store.activeProfile) return null;
+  const birthYear = parseInt(store.activeProfile.birth_date.split('-')[0], 10);
+  const currentYear = new Date().getFullYear();
+  const age = currentYear - birthYear + 1;
+  return age > 0 ? age : null;
+});
+
 const hoveredIndex = ref<number | null>(null);
 
 function getHighlightState(index: number | undefined) {
@@ -103,24 +112,72 @@ function getHighlightState(index: number | undefined) {
 
 function getDynamicData(palace: any) {
   if (!palace) return null;
-  const result: { decadeOverlapName?: string, yearlyOverlapName?: string, transitStars: any[] } = { transitStars: [] };
   
+  const result = {
+    decadeOverlapName: '',
+    yearlyOverlapName: '',
+    decadeMutagens: [] as { name: string; label: string }[],
+    yearlyMutagens: [] as { name: string; label: string }[],
+    decadeTransitStars: [] as any[],
+    yearlyTransitStars: [] as any[]
+  };
+
+  const mutagenLabels = store.lang === 'zh' ? ['禄', '权', '科', '忌'] : ['Lu', 'Quan', 'Ke', 'Ji'];
+  const allPalaceStars = [
+    ...(palace.majorStars || []),
+    ...(palace.minorStars || []),
+    ...(palace.adjectiveStars || [])
+  ];
+
   if (store.activeDecade) {
     result.decadeOverlapName = (store.lang === 'zh' ? "大限" : "Decade ") + store.activeDecade.palaceNames[palace.index];
+    
+    // Decade Mutagens
+    if (store.activeDecade.mutagen && store.activeDecade.mutagen.length > 0) {
+      allPalaceStars.forEach((star: any) => {
+        const idx = store.activeDecade.mutagen.indexOf(star.name);
+        if (idx !== -1) {
+          result.decadeMutagens.push({
+            name: star.name,
+            label: mutagenLabels[idx]
+          });
+        }
+      });
+    }
+
+    // Decade Transit Stars
     if (store.activeDecade.stars && store.activeDecade.stars[palace.index]) {
-      result.transitStars.push(...store.activeDecade.stars[palace.index]);
+      const decStars = store.activeDecade.stars[palace.index].filter((s: any) => !s.scope || s.scope === 'decadal');
+      result.decadeTransitStars.push(...decStars);
     }
   }
-  
+
   if (store.activeYear) {
     result.yearlyOverlapName = (store.lang === 'zh' ? "流年" : "Yearly ") + store.activeYear.palaceNames[palace.index];
+    
+    // Yearly Mutagens
+    if (store.activeYear.mutagen && store.activeYear.mutagen.length > 0) {
+      allPalaceStars.forEach((star: any) => {
+        const idx = store.activeYear.mutagen.indexOf(star.name);
+        if (idx !== -1) {
+          result.yearlyMutagens.push({
+            name: star.name,
+            label: mutagenLabels[idx]
+          });
+        }
+      });
+    }
+
+    // Yearly Transit Stars
     if (store.activeYear.stars && store.activeYear.stars[palace.index]) {
-      result.transitStars.push(...store.activeYear.stars[palace.index]);
+      const yrStars = store.activeYear.stars[palace.index].filter((s: any) => !s.scope || s.scope === 'yearly');
+      result.yearlyTransitStars.push(...yrStars);
     }
   }
 
   return result;
 }
+
 
 // Context Menu State
 const contextMenu = ref({
@@ -175,7 +232,7 @@ onUnmounted(() => {
 
 <template>
   <TooltipProvider :delay-duration="200">
-  <div v-if="store.activeChart" class="space-y-6 relative">
+  <div v-if="store.activeChart" class="relative">
     <!-- 1. Mobile View (Card List) -->
     <div class="block md:hidden space-y-4">
       <!-- Sticky Header -->
@@ -261,23 +318,67 @@ onUnmounted(() => {
             </div>
 
             <!-- Dynamic Overlaps (Mobile) -->
-            <div v-if="store.activeDecade || store.activeYear" class="flex-1 flex flex-col justify-center gap-1 mt-2 mb-2 overflow-hidden bg-white/5 rounded-lg p-2">
-              <div class="flex items-center gap-2 overflow-hidden">
-                <div v-if="getDynamicData(p)?.decadeOverlapName" class="text-[11px] font-semibold text-purple-400/80 truncate">
-                  {{ getDynamicData(p)?.decadeOverlapName }}
+            <div v-if="store.activeDecade || store.activeYear" class="flex-1 flex flex-col justify-center gap-1.5 mt-2 mb-2 overflow-hidden">
+              <div v-for="dyn in [getDynamicData(p)]" :key="p.name" class="space-y-1.5 w-full">
+                <!-- Decade Block -->
+                <div v-if="store.activeDecade && dyn?.decadeOverlapName" class="flex flex-col gap-1 bg-purple-950/30 border border-purple-500/15 rounded-lg p-1.5">
+                  <div class="flex items-center justify-between gap-2">
+                    <span class="text-3xs font-bold text-purple-300 uppercase tracking-wider">
+                      {{ dyn.decadeOverlapName }}
+                    </span>
+                    <!-- Decade Mutagens -->
+                    <div v-if="dyn.decadeMutagens?.length" class="flex flex-wrap items-center gap-0.5">
+                      <span 
+                        v-for="m in dyn.decadeMutagens" 
+                        :key="m.name"
+                        class="text-[9px] px-1 py-0.2 rounded-sm bg-purple-500/10 border border-purple-500/20 text-purple-300 font-semibold"
+                        :title="m.name"
+                      >
+                        {{ m.name }}{{ m.label }}
+                      </span>
+                    </div>
+                  </div>
+                  <!-- Decade Transit Stars -->
+                  <div v-if="dyn.decadeTransitStars?.length" class="flex flex-wrap gap-0.5">
+                    <span 
+                      v-for="ts in dyn.decadeTransitStars" 
+                      :key="ts.name"
+                      class="text-[9px] bg-purple-500/5 text-purple-400 px-1 py-0.5 rounded border border-purple-500/10 leading-none"
+                    >
+                      {{ ts.name }}<span v-if="ts.mutagen" :class="getMutagenClass(ts.mutagen)" class="ml-0.5 px-0.5 rounded text-[8px] font-normal">{{ts.mutagen}}</span>
+                    </span>
+                  </div>
                 </div>
-                <div v-if="getDynamicData(p)?.yearlyOverlapName" class="text-[11px] font-semibold text-red-400/80 truncate">
-                  {{ getDynamicData(p)?.yearlyOverlapName }}
+
+                <!-- Yearly Block -->
+                <div v-if="store.activeYear && dyn?.yearlyOverlapName" class="flex flex-col gap-1 bg-amber-950/30 border border-amber-500/15 rounded-lg p-1.5">
+                  <div class="flex items-center justify-between gap-2">
+                    <span class="text-3xs font-bold text-amber-300 uppercase tracking-wider">
+                      {{ dyn.yearlyOverlapName }}
+                    </span>
+                    <!-- Yearly Mutagens -->
+                    <div v-if="dyn.yearlyMutagens?.length" class="flex flex-wrap items-center gap-0.5">
+                      <span 
+                        v-for="m in dyn.yearlyMutagens" 
+                        :key="m.name"
+                        class="text-[9px] px-1 py-0.2 rounded-sm bg-amber-500/10 border border-amber-500/20 text-amber-300 font-semibold"
+                        :title="m.name"
+                      >
+                        {{ m.name }}{{ m.label }}
+                      </span>
+                    </div>
+                  </div>
+                  <!-- Yearly Transit Stars -->
+                  <div v-if="dyn.yearlyTransitStars?.length" class="flex flex-wrap gap-0.5">
+                    <span 
+                      v-for="ts in dyn.yearlyTransitStars" 
+                      :key="ts.name"
+                      class="text-[9px] bg-amber-500/5 text-amber-400 px-1 py-0.5 rounded border border-amber-500/10 leading-none"
+                    >
+                      {{ ts.name }}<span v-if="ts.mutagen" :class="getMutagenClass(ts.mutagen)" class="ml-0.5 px-0.5 rounded text-[8px] font-normal">{{ts.mutagen}}</span>
+                    </span>
+                  </div>
                 </div>
-              </div>
-              <div class="flex flex-wrap gap-1 mt-0.5" v-if="getDynamicData(p)?.transitStars?.length">
-                <span 
-                  v-for="ts in getDynamicData(p)?.transitStars" 
-                  :key="ts.name"
-                  class="text-[10px] bg-white/5 text-white/60 px-1 py-0.5 rounded border border-white/10"
-                >
-                  {{ ts.name }}<span v-if="ts.mutagen" :class="getMutagenClass(ts.mutagen)" class="ml-0.5 px-0.5 rounded text-[8px]">{{ts.mutagen}}</span>
-                </span>
               </div>
             </div>
 
@@ -301,9 +402,12 @@ onUnmounted(() => {
                   :key="age"
                   @click.stop="store.toggleYear(age)"
                   class="cursor-pointer hover:text-white transition"
-                  :class="store.activeYear?.age === age ? 'text-red-400 font-bold bg-red-500/20 px-1 rounded' : 'text-white/60'"
+                  :class="[
+                    store.activeYear?.age === age ? 'text-red-400 font-bold bg-red-500/20 px-1 rounded' : 'text-white/60',
+                    age === currentAge ? 'ring-1 ring-gold/60 rounded px-1 text-gold font-semibold' : ''
+                  ]"
                 >
-                  {{ age }}
+                  {{ age }}<span v-if="age === currentAge" class="text-gold text-[8px] ml-0.5">●</span>
                 </span>
               </div>
             </div>
@@ -398,23 +502,67 @@ onUnmounted(() => {
         </div>
 
         <!-- Dynamic Overlaps Container -->
-        <div class="flex-1 flex flex-col justify-center gap-1 mt-1 mb-1 overflow-hidden">
-          <div class="flex items-center gap-2 overflow-hidden">
-            <div v-if="getDynamicData(getPalaceByBranch(pos.branch))?.decadeOverlapName" class="text-[11px] font-semibold text-purple-400/80 truncate">
-              {{ getDynamicData(getPalaceByBranch(pos.branch))?.decadeOverlapName }}
+        <div v-if="store.activeDecade || store.activeYear" class="flex-1 flex flex-col justify-center gap-1 mt-1 mb-1 overflow-hidden">
+          <div v-for="dyn in [getDynamicData(getPalaceByBranch(pos.branch))]" :key="pos.branch" class="space-y-1 w-full">
+            <!-- Decade Block -->
+            <div v-if="store.activeDecade && dyn?.decadeOverlapName" class="flex flex-col gap-0.5 bg-purple-950/30 border border-purple-500/15 rounded px-1 py-0.5">
+              <div class="flex items-center justify-between gap-1">
+                <span class="text-[9px] lg:text-3xs font-bold text-purple-300 uppercase tracking-wider truncate">
+                  {{ dyn.decadeOverlapName }}
+                </span>
+                <!-- Decade Mutagens -->
+                <div v-if="dyn.decadeMutagens?.length" class="flex items-center gap-0.5 flex-shrink-0">
+                  <span 
+                    v-for="m in dyn.decadeMutagens" 
+                    :key="m.name"
+                    class="text-[8px] lg:text-[9px] px-0.5 rounded-sm bg-purple-500/10 border border-purple-500/20 text-purple-300 font-semibold scale-90"
+                    :title="m.name"
+                  >
+                    {{ m.name }}{{ m.label }}
+                  </span>
+                </div>
+              </div>
+              <!-- Decade Transit Stars -->
+              <div v-if="dyn.decadeTransitStars?.length" class="flex flex-wrap gap-0.5">
+                <span 
+                  v-for="ts in dyn.decadeTransitStars" 
+                  :key="ts.name"
+                  class="text-[8px] lg:text-[9px] bg-purple-500/5 text-purple-400 px-0.5 py-0.2 rounded border border-purple-500/10 leading-none scale-95"
+                >
+                  {{ ts.name }}<span v-if="ts.mutagen" :class="getMutagenClass(ts.mutagen)" class="ml-0.5 px-0.5 rounded text-[8px] font-normal scale-90">{{ts.mutagen}}</span>
+                </span>
+              </div>
             </div>
-            <div v-if="getDynamicData(getPalaceByBranch(pos.branch))?.yearlyOverlapName" class="text-[11px] font-semibold text-red-400/80 truncate">
-              {{ getDynamicData(getPalaceByBranch(pos.branch))?.yearlyOverlapName }}
+
+            <!-- Yearly Block -->
+            <div v-if="store.activeYear && dyn?.yearlyOverlapName" class="flex flex-col gap-0.5 bg-amber-950/30 border border-amber-500/15 rounded px-1 py-0.5">
+              <div class="flex items-center justify-between gap-1">
+                <span class="text-[9px] lg:text-3xs font-bold text-amber-300 uppercase tracking-wider truncate">
+                  {{ dyn.yearlyOverlapName }}
+                </span>
+                <!-- Yearly Mutagens -->
+                <div v-if="dyn.yearlyMutagens?.length" class="flex items-center gap-0.5 flex-shrink-0">
+                  <span 
+                    v-for="m in dyn.yearlyMutagens" 
+                    :key="m.name"
+                    class="text-[8px] lg:text-[9px] px-0.5 rounded-sm bg-amber-500/10 border border-amber-500/20 text-amber-300 font-semibold scale-90"
+                    :title="m.name"
+                  >
+                    {{ m.name }}{{ m.label }}
+                  </span>
+                </div>
+              </div>
+              <!-- Yearly Transit Stars -->
+              <div v-if="dyn.yearlyTransitStars?.length" class="flex flex-wrap gap-0.5">
+                <span 
+                  v-for="ts in dyn.yearlyTransitStars" 
+                  :key="ts.name"
+                  class="text-[8px] lg:text-[9px] bg-amber-500/5 text-amber-400 px-0.5 py-0.2 rounded border border-amber-500/10 leading-none scale-95"
+                >
+                  {{ ts.name }}<span v-if="ts.mutagen" :class="getMutagenClass(ts.mutagen)" class="ml-0.5 px-0.5 rounded text-[8px] font-normal scale-90">{{ts.mutagen}}</span>
+                </span>
+              </div>
             </div>
-          </div>
-          <div class="flex flex-wrap gap-1 mt-0.5" v-if="getDynamicData(getPalaceByBranch(pos.branch))?.transitStars?.length">
-            <span 
-              v-for="ts in getDynamicData(getPalaceByBranch(pos.branch))?.transitStars" 
-              :key="ts.name"
-              class="text-[9px] bg-white/5 text-white/60 px-1 py-0.5 rounded border border-white/10 leading-none"
-            >
-              {{ ts.name }}<span v-if="ts.mutagen" :class="getMutagenClass(ts.mutagen)" class="ml-0.5 px-0.5 rounded text-[8px]">{{ts.mutagen}}</span>
-            </span>
           </div>
         </div>
 
@@ -439,9 +587,12 @@ onUnmounted(() => {
                 :key="age"
                 @click.stop="store.toggleYear(age)"
                 class="cursor-pointer hover:text-white transition"
-                :class="store.activeYear?.age === age ? 'text-red-400 font-bold bg-red-500/20 px-1 rounded' : ''"
+                :class="[
+                  store.activeYear?.age === age ? 'text-red-400 font-bold bg-red-500/20 px-1 rounded' : '',
+                  age === currentAge ? 'ring-1 ring-gold/60 rounded px-1 text-gold font-semibold' : ''
+                ]"
               >
-                {{ age }}
+                {{ age }}<span v-if="age === currentAge" class="text-gold text-[8px] ml-0.5">●</span>
               </span>
             </div>
           </div>
