@@ -2,6 +2,9 @@
 import { ref } from 'vue';
 import { store } from '../store/useStore';
 import { X, Key, AlertCircle } from 'lucide-vue-next';
+import { isTauri } from '../utils/env';
+
+const isTauriVal = isTauri();
 
 const emit = defineEmits(['close']);
 
@@ -58,7 +61,7 @@ async function handleSave() {
       <!-- Form -->
       <div class="p-6 space-y-5">
         <!-- API Key Input -->
-        <div class="space-y-2">
+        <div v-if="isTauriVal" class="space-y-2">
           <label class="text-sm font-medium text-white/80 block">{{ store.t('apiKey') }}</label>
           <div class="relative">
             <input 
@@ -71,6 +74,13 @@ async function handleSave() {
           <p class="text-xs text-white/40 leading-relaxed">
             {{ store.t('apiKeyDesc') }}
           </p>
+        </div>
+        <div v-else class="space-y-2">
+          <label class="text-sm font-medium text-white/80 block">{{ store.t('apiKey') }}</label>
+          <div class="rounded-lg border border-gold/10 bg-gold/5 px-4 py-3 text-xs text-gold flex items-center gap-2">
+            <span class="text-md">🔒</span>
+            <span>{{ store.lang === 'zh' ? '已启用后端托管的 API 密钥，您无需输入密钥。' : 'Using server-preconfigured API Key. No key entry needed.' }}</span>
+          </div>
         </div>
 
         <!-- Model ID Selection -->

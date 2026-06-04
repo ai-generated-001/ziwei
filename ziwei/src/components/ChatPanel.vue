@@ -67,7 +67,7 @@ watch(() => store.aiStreamingText, scrollToBottom);
         </div>
         <div>
           <h3 class="font-semibold text-white text-md">{{ store.t('aiOracle') }}</h3>
-          <p class="text-3xs text-white/40">{{ store.t('aiPowered') }}</p>
+          <p class="text-3xs text-white/40">{{ store.t('aiDisclaimer') }}</p>
         </div>
       </div>
       <button 

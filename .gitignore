@@ -18,3 +18,7 @@ node_modules/
 .DS_Store
 *.log
 .vscode/
+
+# .NET build and debug/release outputs
+**/bin/
+**/obj/

@@ -48,7 +48,7 @@ export async function askAiStream(
     }
   } else {
     // Web: route via standard HTTP to C# backend (port 5074)
-    const backendUrl = 'http://localhost:5074/api/astrology/analyze';
+    const backendUrl = '/api/astrology/analyze';
 
     const response = await fetch(backendUrl, {
       method: 'POST',

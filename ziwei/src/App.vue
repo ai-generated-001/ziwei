@@ -115,7 +115,7 @@ onUnmounted(() => {
           </Pane>
 
           <Pane min-size="20" size="27" max-size="70" class="pl-3 flex flex-col gap-6 h-full overflow-hidden">
-            <div v-if="!store.settings.apiKey" class="rounded-2xl bg-amber-950/20 border border-amber-500/20 p-4 text-xs text-amber-300 flex items-start gap-3 shrink-0">
+            <div v-if="isTauriVal && !store.settings.apiKey" class="rounded-2xl bg-amber-950/20 border border-amber-500/20 p-4 text-xs text-amber-300 flex items-start gap-3 shrink-0">
               <AlertCircle class="h-5 w-5 shrink-0 mt-0.5" />
               <div class="space-y-1">
                 <span class="font-semibold">{{ store.lang === 'zh' ? 'AI 解析功能未解锁' : 'AI Features Locked' }}</span>
