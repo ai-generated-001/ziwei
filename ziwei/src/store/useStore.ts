@@ -1,8 +1,8 @@
 import { reactive } from 'vue';
-import { invoke } from '@tauri-apps/api/core';
-import { listen } from '@tauri-apps/api/event';
 import { astro } from 'iztro';
 import { extractChartSummary } from '../utils/iztroPruner';
+import { isTauri } from '../utils/env';
+import { askAiStream, type ChatMessage, type AstrologyRequestPayload } from '../services/aiService';
 
 export interface Profile {
   id: string;
@@ -12,11 +12,6 @@ export interface Profile {
   is_leap_month: boolean;
   birth_date: string; // YYYY-MM-DD HH
   created_at: string;
-}
-
-export interface ChatMessage {
-  role: 'system' | 'user' | 'assistant';
-  content: string;
 }
 
 export interface AppSettings {
@@ -181,11 +176,24 @@ export const store = reactive({
   // Settings
   async loadSettings() {
     try {
-      const data = await invoke<AppSettings>('load_settings');
-      this.settings.apiKey = data.apiKey || '';
-      this.settings.model = data.model || 'google/gemini-3.5-flash';
-      if (data.lang === 'en' || data.lang === 'zh') {
-        this.lang = data.lang;
+      if (isTauri()) {
+        const { invoke } = await import('@tauri-apps/api/core');
+        const data = await invoke<AppSettings>('load_settings');
+        this.settings.apiKey = data.apiKey || '';
+        this.settings.model = data.model || 'google/gemini-3.5-flash';
+        if (data.lang === 'en' || data.lang === 'zh') {
+          this.lang = data.lang;
+        }
+      } else {
+        const localData = localStorage.getItem('ziwei_settings');
+        if (localData) {
+          const data = JSON.parse(localData);
+          this.settings.apiKey = data.apiKey || '';
+          this.settings.model = data.model || 'google/gemini-3.5-flash';
+          if (data.lang === 'en' || data.lang === 'zh') {
+            this.lang = data.lang;
+          }
+        }
       }
     } catch (e) {
       console.error('Failed to load settings:', e);
@@ -196,23 +204,36 @@ export const store = reactive({
     try {
       this.settings.apiKey = apiKey;
       this.settings.model = model;
-      await invoke('save_settings', {
-        settings: {
-          apiKey,
-          model,
-          lang: this.lang
-        }
-      });
+      const settingsPayload = {
+        apiKey,
+        model,
+        lang: this.lang
+      };
+
+      if (isTauri()) {
+        const { invoke } = await import('@tauri-apps/api/core');
+        await invoke('save_settings', {
+          settings: settingsPayload
+        });
+      } else {
+        localStorage.setItem('ziwei_settings', JSON.stringify(settingsPayload));
+      }
     } catch (e) {
       console.error('Failed to save settings:', e);
       throw e;
     }
   },
 
-  // Profiles (SQLite)
+  // Profiles (SQLite for Desktop, LocalStorage for Web)
   async loadProfiles() {
     try {
-      this.profiles = await invoke<Profile[]>('get_profiles');
+      if (isTauri()) {
+        const { invoke } = await import('@tauri-apps/api/core');
+        this.profiles = await invoke<Profile[]>('get_profiles');
+      } else {
+        const localData = localStorage.getItem('ziwei_profiles');
+        this.profiles = localData ? JSON.parse(localData) : [];
+      }
     } catch (e) {
       console.error('Failed to load profiles:', e);
     }
@@ -224,7 +245,21 @@ export const store = reactive({
         ...profile,
         created_at: new Date().toISOString()
       };
-      await invoke('save_profile', { profile: fullProfile });
+
+      if (isTauri()) {
+        const { invoke } = await import('@tauri-apps/api/core');
+        await invoke('save_profile', { profile: fullProfile });
+      } else {
+        const localData = localStorage.getItem('ziwei_profiles');
+        const profiles: Profile[] = localData ? JSON.parse(localData) : [];
+        const idx = profiles.findIndex(p => p.id === profile.id);
+        if (idx !== -1) {
+          profiles[idx] = fullProfile;
+        } else {
+          profiles.push(fullProfile);
+        }
+        localStorage.setItem('ziwei_profiles', JSON.stringify(profiles));
+      }
       await this.loadProfiles();
       // If saving the active profile, update it
       if (this.activeProfile?.id === profile.id) {
@@ -238,7 +273,17 @@ export const store = reactive({
 
   async deleteProfile(id: string) {
     try {
-      await invoke('delete_profile', { id });
+      if (isTauri()) {
+        const { invoke } = await import('@tauri-apps/api/core');
+        await invoke('delete_profile', { id });
+      } else {
+        const localData = localStorage.getItem('ziwei_profiles');
+        if (localData) {
+          let profiles: Profile[] = JSON.parse(localData);
+          profiles = profiles.filter(p => p.id !== id);
+          localStorage.setItem('ziwei_profiles', JSON.stringify(profiles));
+        }
+      }
       await this.loadProfiles();
       if (this.activeProfile?.id === id) {
         this.activeProfile = null;
@@ -327,7 +372,7 @@ export const store = reactive({
   // Toggle Decade based on palace index
   toggleDecade(palaceIndex: number) {
     if (!this.activeChart || !this.activeProfile) return;
-    
+
     // If clicking the same decade, toggle it off
     if (this.activeDecade && this.activeDecade.index === palaceIndex) {
       this.activeDecade = null;
@@ -339,7 +384,7 @@ export const store = reactive({
     const age = p.decadal.range[0]; // first age in that decade
     const birthYear = parseInt(this.activeProfile.birth_date.split('-')[0], 10);
     const targetYear = birthYear + age - 1;
-    
+
     // Calculate horoscope for a date in the target year
     const h = this.activeChart.horoscope(`${targetYear}-06-01`);
     this.activeDecade = h.decadal;
@@ -349,13 +394,13 @@ export const store = reactive({
   // Toggle Year based on an age
   toggleYear(age: number) {
     if (!this.activeChart || !this.activeProfile) return;
-    
+
     const birthYear = parseInt(this.activeProfile.birth_date.split('-')[0], 10);
     const targetYear = birthYear + age - 1;
     const h = this.activeChart.horoscope(`${targetYear}-06-01`);
 
     // If clicking the same year, toggle it off
-    if (this.activeYear && this.activeYear.age === age) { // wait, yearly doesn't have age directly but we can track it or just use targetYear. Actually h.age exists.
+    if (this.activeYear && this.activeYear.age === age) {
       this.activeYear = null;
       return;
     }
@@ -366,11 +411,9 @@ export const store = reactive({
     this.activeYear.age = age;
   },
 
-  // AI Streaming Listener
+  // AI Streaming Listener (no-op now, handled inside the adapter per request)
   setupEventListener() {
-    listen<string>('ai-response-chunk', (event) => {
-      this.aiStreamingText += event.payload;
-    });
+    // Handled dynamically per-request in askAiStream adapter
   },
 
   // AI Chat Request
@@ -379,7 +422,8 @@ export const store = reactive({
       this.aiError = this.lang === 'zh' ? '请先计算或载入命盘。' : 'Please calculate or load a profile first.';
       return;
     }
-    if (!this.settings.apiKey) {
+    // Only require configured API key on desktop client. Web version proxies requests via backend configuration.
+    if (isTauri() && !this.settings.apiKey) {
       this.aiError = this.lang === 'zh' ? '请先在设置中配置 API 密钥。' : 'Please configure your OpenRouter API Key in Settings first.';
       return;
     }
@@ -418,9 +462,9 @@ ${summary}
 
     const systemPrompt = this.lang === 'zh' ? systemPromptZh : systemPromptEn;
 
-    // Construct history: limit to last 5 turns of conversation
+    // Construct history: limit to last 10 messages (5 turns)
     const newUserMessage: ChatMessage = { role: 'user', content: userPrompt };
-    const recentHistory = this.chatHistory.slice(-10); // 10 messages = 5 turns
+    const recentHistory = this.chatHistory.slice(-10);
 
     const messagesToSend = [
       { role: 'system', content: systemPrompt } as ChatMessage,
@@ -428,11 +472,23 @@ ${summary}
       newUserMessage
     ];
 
+    const payload: AstrologyRequestPayload = {
+      chartContext: summary,
+      userPrompt: userPrompt,
+      chatHistory: recentHistory,
+      lang: this.lang,
+      model: this.settings.model
+    };
+
     try {
       this.chatHistory.push(newUserMessage);
 
-      // Call Rust backend async command
-      await invoke('ask_ai', { messages: messagesToSend });
+      // Route streaming through unified AI adapter
+      await askAiStream(messagesToSend, payload, {
+        onChunk: (chunk: string) => {
+          this.aiStreamingText += chunk;
+        }
+      });
 
       if (this.aiStreamingText) {
         this.chatHistory.push({
@@ -449,7 +505,8 @@ ${summary}
   },
 
   async askAiDeepAnalysis(palaceName: string, palaceData: any) {
-    if (!this.settings.apiKey) {
+    // Only require configured API key on desktop client. Web version proxies requests via backend configuration.
+    if (isTauri() && !this.settings.apiKey) {
       this.aiError = this.lang === 'zh' ? '请先在设置中配置 API 密钥。' : 'Please configure your OpenRouter API Key in Settings first.';
       return;
     }
@@ -463,7 +520,7 @@ ${summary}
     const transformations = palaceData.majorStars.filter((s: any) => s.mutagen).map((s: any) => `${s.name}${s.mutagen}`).join(', ');
 
     const systemPromptZh = `# Role
-你是一位精通紫微斗数（三合派与四化派）的命理宗师。你的分析客观、深刻，既懂古法，又能结合现代人的职场和情感现状进行解读。
+你是一位精通紫微斗数（三合派与四化派）的命理宗师。你的分析客观、深刻，既懂古法，又能结合现代人的职场 and 情感现状进行解读。
 
 # Task
 根据用户提供的宫位数据，进行深度解析。
@@ -527,9 +584,26 @@ Before outputting the final conclusion, please strictly follow these steps for l
       newUserMessage
     ];
 
+    const payload: AstrologyRequestPayload = {
+      palaceName: palaceName,
+      majorStars: majorStars,
+      minorStars: minorStars,
+      transformations: transformations,
+      chartContext: `Palace data - Major: ${majorStars}, Minor: ${minorStars}, Transformations: ${transformations}`,
+      userPrompt: userDisplayMsg,
+      lang: this.lang,
+      model: this.settings.model
+    };
+
     try {
       this.chatHistory.push(newUserMessage);
-      await invoke('ask_ai', { messages: messagesToSend });
+
+      // Route streaming through unified AI adapter
+      await askAiStream(messagesToSend, payload, {
+        onChunk: (chunk: string) => {
+          this.aiStreamingText += chunk;
+        }
+      });
 
       if (this.aiStreamingText) {
         this.chatHistory.push({

@@ -1,29 +1,75 @@
 <script setup lang="ts">
-import { getCurrentWindow } from '@tauri-apps/api/window';
 import { ref, onMounted } from 'vue';
 import { Minus, Square, Copy, X } from 'lucide-vue-next';
+import { isTauri } from '../utils/env';
 
-const appWindow = getCurrentWindow();
+const isTauriVal = isTauri();
 const isMaximized = ref(true);
+let appWindow: any = null;
+
+async function initWindow() {
+  if (isTauriVal) {
+    try {
+      const { getCurrentWindow } = await import('@tauri-apps/api/window');
+      appWindow = getCurrentWindow();
+      isMaximized.value = await appWindow.isMaximized();
+      appWindow.onResized(syncMaximized);
+    } catch (e) {
+      console.error('Failed to initialize Tauri window:', e);
+    }
+  }
+}
 
 async function syncMaximized() {
-  isMaximized.value = await appWindow.isMaximized();
+  if (appWindow) {
+    try {
+      isMaximized.value = await appWindow.isMaximized();
+    } catch (e) {
+      console.error('Failed to sync maximized state:', e);
+    }
+  }
 }
 
 async function handleToggleMaximize() {
-  await appWindow.toggleMaximize();
-  // Small delay to let the OS settle
-  setTimeout(syncMaximized, 50);
+  if (appWindow) {
+    try {
+      await appWindow.toggleMaximize();
+      // Small delay to let the OS settle
+      setTimeout(syncMaximized, 50);
+    } catch (e) {
+      console.error('Failed to toggle maximize:', e);
+    }
+  }
+}
+
+async function handleMinimize() {
+  if (appWindow) {
+    try {
+      await appWindow.minimize();
+    } catch (e) {
+      console.error('Failed to minimize window:', e);
+    }
+  }
+}
+
+async function handleClose() {
+  if (appWindow) {
+    try {
+      await appWindow.close();
+    } catch (e) {
+      console.error('Failed to close window:', e);
+    }
+  }
 }
 
 onMounted(() => {
-  syncMaximized();
-  appWindow.onResized(syncMaximized);
+  initWindow();
 });
 </script>
 
 <template>
   <div
+    v-if="isTauriVal"
     data-tauri-drag-region
     class="titlebar"
   >
@@ -36,7 +82,7 @@ onMounted(() => {
     <!-- Window controls -->
     <div class="titlebar__controls">
       <button
-        @click="appWindow.minimize()"
+        @click="handleMinimize()"
         class="titlebar__btn"
         aria-label="Minimize"
       >
@@ -53,7 +99,7 @@ onMounted(() => {
       </button>
 
       <button
-        @click="appWindow.close()"
+        @click="handleClose()"
         class="titlebar__btn titlebar__btn--close"
         aria-label="Close"
       >

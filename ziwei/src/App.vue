@@ -10,9 +10,11 @@ import TitleBar from './components/TitleBar.vue';
 import { Settings, Compass, Sparkles, AlertCircle, MessageSquare } from 'lucide-vue-next';
 import { Splitpanes, Pane } from 'splitpanes';
 import 'splitpanes/dist/splitpanes.css';
+import { isTauri } from './utils/env';
 
 const isSettingsOpen = ref(false);
 const isMobileChatOpen = ref(false);
+const isTauriVal = isTauri();
 
 function handleOpenMobileChat() {
   isMobileChatOpen.value = true;
@@ -35,7 +37,7 @@ onUnmounted(() => {
 <template>
   <div class="h-screen w-screen overflow-hidden bg-[#0B0F19] text-zinc-50 flex flex-col font-sans">
     <!-- Custom Title Bar (replaces native OS decorations) -->
-    <TitleBar />
+    <TitleBar v-if="isTauriVal" />
 
     <!-- Navigation / Header -->
     <header class="border-b border-zinc-800 bg-[#0B0F19]/80 backdrop-blur-md sticky top-0 z-40 px-6 py-4 shadow-sm shrink-0">
