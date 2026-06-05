@@ -32,8 +32,9 @@ public class AstrologyController : ControllerBase
         {
             await foreach (var chunk in _astrologyService.AnalyzeAstrologyAsync(request, cancellationToken))
             {
-                // Format each chunk as a standard Server-Sent Event (SSE)
-                var sseMessage = $"data: {chunk}\n\n";
+                // JSON-encode the chunk so newlines and special chars don't break SSE line framing
+                var jsonChunk = System.Text.Json.JsonSerializer.Serialize(chunk);
+                var sseMessage = $"data: {jsonChunk}\n\n";
                 var bytes = System.Text.Encoding.UTF8.GetBytes(sseMessage);
                 await responseStream.WriteAsync(bytes, cancellationToken);
                 await responseStream.FlushAsync(cancellationToken);

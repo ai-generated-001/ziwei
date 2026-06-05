@@ -83,9 +83,16 @@ export async function askAiStream(
         buffer = buffer.slice(lineEnd + 1);
 
         if (line.startsWith('data: ')) {
-          const content = line.slice(6);
-          if (content) {
-            callbacks.onChunk(content);
+          const raw = line.slice(6);
+          if (raw) {
+            try {
+              // Backend sends JSON-encoded strings to preserve newlines in SSE
+              const content = JSON.parse(raw);
+              callbacks.onChunk(content);
+            } catch {
+              // Fallback: use raw content if not valid JSON (e.g. error messages)
+              callbacks.onChunk(raw);
+            }
           }
         }
       }

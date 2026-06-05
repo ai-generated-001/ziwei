@@ -32,6 +32,7 @@ public class OpenRouterService : IOpenRouterService
         if (!string.IsNullOrEmpty(request.SystemPrompt))
         {
             systemPrompt = request.SystemPrompt;
+            _logger.LogInformation("Using frontend-supplied SystemPrompt ({Length} chars)", systemPrompt.Length);
         }
         else if (isPalaceAnalysis)
         {
