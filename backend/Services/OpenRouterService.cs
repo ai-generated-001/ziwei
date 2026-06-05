@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using backend.Models;
 
 namespace backend.Services;
@@ -11,11 +12,13 @@ public class OpenRouterService : IOpenRouterService
 {
     private readonly HttpClient _httpClient;
     private readonly ILogger<OpenRouterService> _logger;
+    private readonly OpenRouterOptions _options;
 
-    public OpenRouterService(HttpClient httpClient, ILogger<OpenRouterService> logger)
+    public OpenRouterService(HttpClient httpClient, IOptions<OpenRouterOptions> options, ILogger<OpenRouterService> logger)
     {
         _httpClient = httpClient;
         _logger = logger;
+        _options = options.Value;
     }
 
     public async IAsyncEnumerable<string> AnalyzeAstrologyAsync(
@@ -138,7 +141,7 @@ Here is the user's Zi Wei Dou Shu chart context:
 
         var requestBody = new
         {
-            model = string.IsNullOrEmpty(request.Model) ? "google/gemini-3.5-flash" : request.Model,
+            model = string.IsNullOrEmpty(_options.DefaultModel) ? "deepseek/deepseek-v4-flash" : _options.DefaultModel,
             messages = messagesList,
             stream = true
         };

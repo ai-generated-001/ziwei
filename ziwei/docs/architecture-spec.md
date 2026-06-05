@@ -1,77 +1,167 @@
 # Architecture & Implementation Specification: ZiWei Analyzer
 
 ## 1. Project Overview
-A cross-platform desktop (PC) and mobile (Android) application built with **Tauri v2**. The application performs "Zi Wei Dou Shu" (Purple Star Astrology) calculations using the `iztro` library, manages user profiles, visualizes the astrological chart (responsively adapting to PC/Mobile), and provides an interactive AI interpretation engine powered by OpenRouter.
+ZiWei Analyzer is a hybrid Chinese astrology application that calculates traditional **Zi Wei Dou Shu (Purple Star Astrology / 紫微斗数)** charts, manages user profiles, visualizes the astrological chart in a responsive format, and provides an interactive AI interpretation oracle powered by OpenRouter.
+
+The application is designed to support two distinct operational modes:
+1. **Desktop/Mobile Mode (Tauri v2)**: A standalone client application for PC (Windows/macOS) and Mobile (Android).
+2. **Web Mode (Docker)**: A server-deployed web application powered by a C# .NET 10.0 Web API backend and reverse-proxied by Nginx.
+
+---
 
 ## 2. Tech Stack & Scaffolding Guidelines
-* **Frontend**: Vue 3 (TypeScript) + Tailwind CSS + Lucide Icons.
-* **Backend**: Rust (Tauri v2 Core).
-* **Astrology Engine**: `iztro` (TypeScript library, executed in the frontend).
-* **Database**: SQLite (built-in Rust `rusqlite` database layer accessed via Tauri commands).
-* **State Management**: Custom lightweight reactive Vue store (`useStore.ts`).
 
-## 3. Architecture & Security Design
-**Rule:** The frontend MUST NOT hold any sensitive API keys or make direct network requests to OpenRouter. 
+* **Frontend**: Vue 3 (Composition API, TypeScript) + Tailwind CSS + Lucide Icons.
+* **Astrology Calculation Engine**: `iztro` (TypeScript library executed on the client frontend).
+* **Desktop Backend (Tauri)**: Rust (Tauri v2 Core) providing local file-system and SQLite integration.
+* **Web Backend**: C# .NET 10.0 Web API acts as a secure, server-side OpenRouter proxy and SSE streaming host.
+* **Database**:
+  * **Tauri Mode**: SQLite via the `rusqlite` Rust crate.
+  * **Web Mode**: Browser `localStorage` for profile and settings storage.
+* **Reverse Proxy / Deployment**: Nginx + Docker Compose for multi-container orchestration.
+* **State Management**: Custom lightweight reactive Vue store ([useStore.ts](file:///d:/workspace/my/ziwei/ziwei/src/store/useStore.ts)).
 
+---
+
+## 3. Hybrid Architecture & Security Design
+
+The application ensures that OpenRouter API requests are processed securely according to the active deployment environment.
+
+```mermaid
+graph TD
+    subgraph Tauri Desktop App
+        VueFrontend[Vue Frontend] -->|Tauri Invoke| RustBackend[Rust Backend]
+        RustBackend -->|Reqwest + ApiKey| OpenRouter[OpenRouter API]
+        RustBackend -->|Local SQLite| LocalDB[(ziwei.db)]
+        RustBackend -->|Local JSON| LocalSettings[settings.json]
+    end
+
+    subgraph Docker Web Deployment
+        Browser[Client Browser] -->|Fetch POST /api| NginxProxy[Nginx Reverse Proxy]
+        NginxProxy -->|Route /| StaticWeb[Frontend Container - Nginx]
+        NginxProxy -->|Route /api| DotnetBackend[C# .NET Web API Backend]
+        DotnetBackend -->|HttpClient + ServerApiKey| OpenRouter
+        Browser -->|Web storage| LocalStorage[(Browser LocalStorage)]
+    end
+```
+
+### 3.1 Desktop Mode (Tauri)
 * **API Key Management**: 
-    * Users will input their OpenRouter API Key in a "Settings" modal.
-    * The frontend will pass this key to the Rust backend via Tauri `invoke`.
-    * Rust will securely store the key locally in a `settings.json` file within the application's configuration directory.
+  * Users enter their OpenRouter API Key in the settings interface, which is passed to the Rust backend via Tauri `invoke`.
+  * Rust securely stores the key locally in `settings.json` within the app's configuration directory.
 * **AI Network Requests**:
-    * Frontend constructs the prompt and calls a Tauri Rust command (e.g., `invoke("ask_ai", { prompt, context })`).
-    * Rust backend constructs the HTTP request, attaches the securely stored API key, calls the OpenRouter API, and streams the response back to the frontend using Tauri Events (`emit`).
+  * The frontend initiates requests via the `ask_ai` Tauri command.
+  * The Rust backend builds the request using `reqwest`, injects the API key, issues the API call to OpenRouter with `stream: true`, and broadcasts response chunks back to Vue using Tauri Events (`ai-response-chunk`).
+
+### 3.2 Web Mode (Docker Deployment)
+* **API Key Management**: 
+  * The OpenRouter API Key is stored on the server side as an environment variable (`OpenRouter__ApiKey`) or in the C# `appsettings.json` configuration.
+  * The client browser has no access to and does not hold the API key, preventing key exposure.
+* **AI Network Requests**:
+  * The frontend sends an HTTP POST request containing the pruned chart context and user prompt to `/api/astrology/analyze`.
+  * The C# .NET backend reads the request, attaches the server-side configured API key, and calls the OpenRouter API.
+  * The response is streamed back to the client browser in real time using Server-Sent Events (SSE) via the `text/event-stream` protocol.
+
+---
 
 ## 4. State & Profile Management (The Archive)
-To handle the discrepancy between PC and Android file systems, rely on Tauri's official plugins to abstract the pathing.
 
-* **Data Schema (SQLite)**:
-    * `Profiles`: `id`, `name`, `gender`, `birth_type` (solar/lunar), `is_leap_month` (boolean), `birth_date` (YYYY-MM-DD HH), `created_at`.
-* **Storage Path**: Use Tauri's `BaseDirectory::AppLocalData` to ensure the SQLite database is stored in the correct sandbox directory on both Windows/macOS and Android.
+Profiles and configuration settings are saved differently depending on the platform context:
+
+### 4.1 SQLite Database (Tauri Mode)
+* **Storage Path**: Tauri's `BaseDirectory::AppLocalData` path.
+* **Schema**:
+  * `profiles`: `id` (TEXT PRIMARY KEY), `name` (TEXT), `gender` (TEXT), `birth_type` (TEXT - solar/lunar), `is_leap_month` (INTEGER), `birth_date` (TEXT - YYYY-MM-DD HH), `created_at` (TEXT).
+* **Implementation**: Managed by [lib.rs](file:///d:/workspace/my/ziwei/ziwei/src-tauri/src/lib.rs) utilizing `rusqlite`.
+
+### 4.2 Browser Storage (Web Mode)
+* **Profiles Storage**: Saved under the `ziwei_profiles` key in browser `localStorage`.
+* **Settings Storage**: Saved under the `ziwei_settings` key in browser `localStorage` (AI model is locked to the server's default, e.g., `deepseek/deepseek-v4-flash`).
+
+---
 
 ## 5. UI/UX & Responsive Visualization Strategy
-The application must dynamically render different layouts based on the viewport width (using Tailwind's `md:` or `lg:` breakpoints).
+
+The user interface adapts dynamically to the viewport size.
 
 ### 5.1 Input & Archive Module
-* A clean form requesting: Name, Gender, Birth Date/Time, Calendar Type (Solar/Lunar), and Leap Month toggle. (No True Solar Time calculations are required).
-* A "Load Profile" drawer/sidebar that lists saved profiles from the SQLite database.
+* **Profile Form**: Standard form asking for Name, Gender, Birth Date/Time, Calendar Type (Solar/Lunar), and Leap Month toggle.
+* **Archive List**: Drawer interface showing stored profiles. Selecting a profile queries it and parses it into `iztro`.
 
-### 5.2 Chart Visualization (The Core UI)
-The `iztro` engine returns a complex 12-palace JSON. The UI must interpret this differently per platform:
-* **PC Layout (Desktop Viewport)**:
-    * Implement the traditional **12-Palace Grid (十二宫格)**.
-    * Use CSS Grid to create a 4x4 layout where the center 2x2 cells are merged to display the user's core demographic info and current elemental phase (五行局). The 12 remaining outer cells represent the palaces.
-* **Android Layout (Mobile Viewport)**:
-    * Implement a **Modern Card List (卡片列表)**.
-    * The center info becomes a sticky header.
-    * The 12 palaces are rendered as a vertical scrolling list of expandable cards.
+### 5.2 Astrolabe Visualization
+* **PC Grid (Desktop Viewport)**:
+  * Traditional **12-Palace Grid (十二宫格)**.
+  * Renders a 4x4 CSS grid. The outer 12 cells represent the Earthly Branches, while the central 2x2 cells display the profile's basic details, BaZi (八字), and Five Elements Phase (五行局).
+* **Mobile View (Mobile/Android Viewport)**:
+  * The central profile info forms a sticky top header.
+  * The 12 palaces are rendered as a vertical list of cards that can be expanded to view minor details.
 
-### 5.3 Information Hierarchy (Visual Weight)
-Within each Palace (宫位), data from `iztro` must be filtered and styled by importance to prevent visual clutter:
-1.  **Primary**: Palace Name (e.g., 命宫), Major Stars (十四主星) + Brightness (庙旺利陷). (Large font, distinct colors).
-2.  **Secondary**: Lucky/Unlucky Stars (六吉六凶), Transformations (四化 - 禄权科忌). (Medium font, badge styling).
-3.  **Tertiary**: Minor Stars (杂曜), 12 Longevity states (长生十二神). (Small font, muted colors, hidden inside a "More..." toggle on mobile).
+### 5.3 Interactive Features
+* **San Fang Si Zheng (三方四正)**: Hovering or tapping a palace highlights its opposite and trine palaces while dimming the other cells to emphasize the astrological relationships.
+* **Decadal & Annual Horoscopes**: Users can click or tap palaces to toggle active Decades (大限) and Ages (流年), which overlay flying stars and decadal elements onto the chart.
+
+---
 
 ## 6. AI Interaction Engine (The AI Oracle)
-To prevent LLM hallucination and token bloat, the raw `iztro` JSON MUST be pruned before being sent to OpenRouter.
 
-### 6.1 Data Pruning (Prompt Context)
-* Create a TypeScript utility function: `extractChartSummary(iztroData)`.
-* This function extracts ONLY the essential data required for reading:
-    * User Yin/Yang & Gender (阴阳男女), Five Elements Phase (五行局).
-    * Detailed configurations of all 12 Palaces (including major/minor stars, mutagen transformations, body palace flags, decadal age ranges, longevity/doctor states, and active decadal/yearly flying stars).
-    * The current Decade (大限) and Current Year (流年) palaces and their major stars.
-* Convert this pruned object into a readable Markdown string to append as system context.
+The AI interaction is coordinated by [aiService.ts](file:///d:/workspace/my/ziwei/ziwei/src/services/aiService.ts) and [useStore.ts](file:///d:/workspace/my/ziwei/ziwei/src/store/useStore.ts).
 
-### 6.2 Chat UI & Pre-set Templates
-* Implement a Chat Interface styled similar to modern messaging apps.
-* **Pre-set Prompts (Chips)**: Above the chat input, provide quick-select chips:
-    * "Analyze my overall Destiny Palace (命宫分析)"
-    * "How is my Career and Wealth this decade? (当前大限事业财运)"
-    * "What should I watch out for in my Marriage/Relationships? (感情婚姻建议)"
-* **Context Window**: Maintain the last 5 turns of conversation in the Vue state. Pass this history along with the `ChartSummary` to the Rust proxy for every follow-up question to ensure conversational memory.
+### 6.1 Data Pruning
+Before sending data to the LLM, the raw JSON is pruned via `extractChartSummary` to reduce prompt token size and eliminate hallucination risks. It extracts:
+* Basic info: Yin/Yang, Gender, Five Elements Phase.
+* Configurations of the 12 palaces (major/minor stars, transformations, decadal age ranges, longevity state, active decadal/annual flying stars).
+* Selected Decade and Year.
 
-## 7. Development Status
-The core scaffolding, including the Tauri Rust backend for SQLite and OpenRouter proxying, as well as the Vue frontend with responsive UI and `iztro` integration, has been fully implemented.
+### 6.2 Deep Palace Analysis
+When a user requests a deep analysis of a specific palace, the AI operates under a strict system prompt workflow:
+1. **Determine the Tone**: Evaluate major stars and their brightness (廟旺利陷).
+2. **Observe Transformations (四化)**: Prioritize analyzing Hua Lu, Hua Quan, Hua Ke, and Hua Ji.
+3. **Check Auxiliary Stars**: Analyze the influence of lucky and unlucky stars.
+4. **Output Format**:
+   * **Core Traits (核心特质)**: One-sentence summary.
+   * **Deep Analysis (深度解析)**: Logical, non-templated explanation.
+   * **Potential Risks (潜在风险)**: Hazards or psychological blind spots.
+   * **Master's Advice (宗师建议)**: Actionable modern life guidance.
+
+---
+
+## 7. Web Service & Docker Deployment Architecture
+
+The Web deployment environment packages the frontend and C# backend as separate containers proxied by an external Nginx server.
+
+```
+[Client Browser]
+       │
+       ▼ (Port 8080)
+┌──────────────────────────────────────┐
+│            nginx-proxy               │
+│                                      │
+│  /     --> http://frontend:80;       │
+│  /api/ --> http://backend:5074;      │
+└──────────────────────────────────────┘
+       │                        │
+       ├────────────────────────┘
+       ▼                        ▼
+┌──────────────┐         ┌──────────────┐
+│   frontend   │         │   backend    │
+│ (Vite + Vue) │         │ (.NET Core)  │
+│  Port 80     │         │  Port 5074   │
+└──────────────┘         └──────────────┘
+```
+
+### 7.1 Docker Services ([docker-compose.yml](file:///d:/workspace/my/ziwei/docker-compose.yml))
+1. **backend**:
+   * Builds from [backend/Dockerfile](file:///d:/workspace/my/ziwei/backend/Dockerfile) utilizing the `.NET 10.0` SDK and Runtime.
+   * Configures ASP.NET Core environment variables.
+   * Receives OpenRouter keys and default model selections via environment variables (`OpenRouter__ApiKey`, `OpenRouter__DefaultModel`).
+2. **frontend**:
+   * Builds from [ziwei/Dockerfile](file:///d:/workspace/my/ziwei/ziwei/Dockerfile) using `Node.js` and `pnpm`.
+   * Serves static compiled files through Nginx.
+3. **proxy**:
+   * Runs Nginx on port 8080.
+   * Forwards frontend assets and reverse-proxies `/api/` calls to the backend.
+
+---
 
 ## 8. Documentation Maintenance
-ALWAYS update this spec file accordingly when making code changes, and keep this rule.
+Ensure both this spec file and the root [README.md](file:///d:/workspace/my/ziwei/README.md) are updated synchronously when making architectural changes.

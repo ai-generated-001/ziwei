@@ -10,5 +10,5 @@ public class AstrologyRequest
     public string UserPrompt { get; set; } = string.Empty;
     public List<ChatMessageDto>? ChatHistory { get; set; } = [];
     public string Lang { get; set; } = "zh";
-    public string Model { get; set; } = "google/gemini-3.5-flash";
+    public string Model { get; set; } = "deepseek/deepseek-v4-flash";
 }

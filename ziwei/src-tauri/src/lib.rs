@@ -77,7 +77,7 @@ fn load_settings(app_handle: AppHandle) -> Result<Value, String> {
     if !file_path.exists() {
         return Ok(json!({
             "apiKey": "",
-            "model": "google/gemini-2.5-flash"
+            "model": "deepseek/deepseek-v4-flash"
         }));
     }
     
@@ -162,7 +162,7 @@ async fn ask_ai(messages: Vec<ChatMessage>, app_handle: AppHandle) -> Result<(),
 
     let model = settings.get("model")
         .and_then(|v| v.as_str())
-        .unwrap_or("google/gemini-2.5-flash");
+        .unwrap_or("deepseek/deepseek-v4-flash");
 
     let client = reqwest::Client::new();
     let response = client

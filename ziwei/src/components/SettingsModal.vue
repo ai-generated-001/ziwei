@@ -83,8 +83,8 @@ async function handleSave() {
           </div>
         </div>
 
-        <!-- Model ID Selection -->
-        <div class="space-y-2">
+        <!-- Model ID Selection (Desktop only) -->
+        <div v-if="isTauriVal" class="space-y-2">
           <label class="text-sm font-medium text-white/80 block">{{ store.t('aiModel') }}</label>
           <select 
             v-model="model"

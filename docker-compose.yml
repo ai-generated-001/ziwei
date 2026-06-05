@@ -10,6 +10,7 @@ services:
       - ASPNETCORE_ENVIRONMENT=Development
       - OpenRouter__ApiKey=${OPENROUTER_API_KEY:-YOUR_OPENROUTER_API_KEY_HERE}
       - OpenRouter__BaseUrl=https://openrouter.ai/api/v1/
+      - OpenRouter__DefaultModel=${OPENROUTER_DEFAULT_MODEL:-deepseek/deepseek-v4-flash}
     restart: always
 
   frontend:

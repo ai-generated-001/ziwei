@@ -22,3 +22,5 @@ node_modules/
 # .NET build and debug/release outputs
 **/bin/
 **/obj/
+backend/bin
+backend/obj

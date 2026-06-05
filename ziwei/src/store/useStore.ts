@@ -134,7 +134,7 @@ export const store = reactive({
 
   settings: {
     apiKey: '',
-    model: 'google/gemini-3.5-flash',
+    model: 'deepseek/deepseek-v4-flash',
   } as AppSettings,
 
   profiles: [] as Profile[],
@@ -180,7 +180,7 @@ export const store = reactive({
         const { invoke } = await import('@tauri-apps/api/core');
         const data = await invoke<AppSettings>('load_settings');
         this.settings.apiKey = data.apiKey || '';
-        this.settings.model = data.model || 'google/gemini-3.5-flash';
+        this.settings.model = data.model || 'deepseek/deepseek-v4-flash';
         if (data.lang === 'en' || data.lang === 'zh') {
           this.lang = data.lang;
         }
@@ -189,10 +189,12 @@ export const store = reactive({
         if (localData) {
           const data = JSON.parse(localData);
           this.settings.apiKey = data.apiKey || '';
-          this.settings.model = data.model || 'google/gemini-3.5-flash';
+          this.settings.model = 'deepseek/deepseek-v4-flash'; // Force default model in web mode
           if (data.lang === 'en' || data.lang === 'zh') {
             this.lang = data.lang;
           }
+        } else {
+          this.settings.model = 'deepseek/deepseek-v4-flash';
         }
       }
     } catch (e) {
@@ -203,10 +205,10 @@ export const store = reactive({
   async saveSettings(apiKey: string, model: string) {
     try {
       this.settings.apiKey = apiKey;
-      this.settings.model = model;
+      this.settings.model = isTauri() ? model : 'deepseek/deepseek-v4-flash';
       const settingsPayload = {
         apiKey,
-        model,
+        model: this.settings.model,
         lang: this.lang
       };
 
