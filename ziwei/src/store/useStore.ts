@@ -479,7 +479,8 @@ ${summary}
       userPrompt: userPrompt,
       chatHistory: recentHistory,
       lang: this.lang,
-      model: this.settings.model
+      model: this.settings.model,
+      systemPrompt: systemPrompt
     };
 
     try {
@@ -594,7 +595,8 @@ Before outputting the final conclusion, please strictly follow these steps for l
       chartContext: `Palace data - Major: ${majorStars}, Minor: ${minorStars}, Transformations: ${transformations}`,
       userPrompt: userDisplayMsg,
       lang: this.lang,
-      model: this.settings.model
+      model: this.settings.model,
+      systemPrompt: systemPrompt
     };
 
     try {

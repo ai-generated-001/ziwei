@@ -15,6 +15,7 @@ export interface AstrologyRequestPayload {
   chatHistory?: ChatMessage[];
   lang: string;
   model: string;
+  systemPrompt?: string;
 }
 
 export interface StreamCallbacks {

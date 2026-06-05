@@ -29,7 +29,11 @@ public class OpenRouterService : IOpenRouterService
         string systemPrompt;
         bool isPalaceAnalysis = !string.IsNullOrEmpty(request.PalaceName);
 
-        if (isPalaceAnalysis)
+        if (!string.IsNullOrEmpty(request.SystemPrompt))
+        {
+            systemPrompt = request.SystemPrompt;
+        }
+        else if (isPalaceAnalysis)
         {
             if (request.Lang.Equals("zh", StringComparison.OrdinalIgnoreCase))
             {
