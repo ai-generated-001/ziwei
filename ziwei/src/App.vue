@@ -67,18 +67,18 @@ onUnmounted(() => {
           </div>
 
           <!-- Language Toggle -->
-          <div class="flex items-center rounded-xl border border-white/10 bg-white/5 p-0.5 overflow-hidden">
+          <div class="flex items-center rounded-xl border border-white/10 bg-white/5 p-0.5 h-9 overflow-hidden">
             <button 
               @click="store.setLanguage('zh')"
               :class="store.lang === 'zh' ? 'bg-gold text-space-950 font-bold' : 'text-white/60 hover:text-white'"
-              class="px-2.5 py-1 text-2xs rounded-lg transition"
+              class="w-10 h-full text-xs rounded-lg transition flex items-center justify-center"
             >
               中
             </button>
             <button 
               @click="store.setLanguage('en')"
               :class="store.lang === 'en' ? 'bg-gold text-space-950 font-bold' : 'text-white/60 hover:text-white'"
-              class="px-2.5 py-1 text-2xs rounded-lg transition"
+              class="w-10 h-full text-xs rounded-lg transition flex items-center justify-center"
             >
               EN
             </button>
@@ -87,9 +87,9 @@ onUnmounted(() => {
           <!-- Settings Button -->
           <button 
             @click="isSettingsOpen = true"
-            class="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 px-4 py-2 text-xs font-semibold text-white transition active:scale-95"
+            class="flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 w-28 h-9 text-xs font-semibold text-white transition active:scale-95 shrink-0"
           >
-            <Settings class="h-4 w-4" />
+            <Settings class="h-4 w-4 shrink-0" />
             <span>{{ store.t('settings') }}</span>
           </button>
         </div>
